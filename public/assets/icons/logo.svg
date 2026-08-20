@@ -1,0 +1,6 @@
+<svg width="148" height="34" viewBox="0 0 148 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="1" y="4" width="26" height="26" rx="7" fill="#E8BA40"/>
+  <path d="M8 21.2L13 14.8L17 18L21.5 11" stroke="#050505" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21.5 11H18.2M21.5 11V14.3" stroke="#050505" stroke-width="2.6" stroke-linecap="round"/>
+  <text x="35" y="23" fill="#F3F4F6" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">Signalist</text>
+</svg>

@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #050505;
+  --panel: #141414;
+  --text: #f3f4f6;
+  --muted: #9095a1;
+  --yellow: #e8ba40;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.site-container {
+  width: 100%;
+  max-width: 1536px;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 768px) {
+  .site-container { padding-inline: 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .site-container { padding-inline: 2rem; }
+}
+
+.home-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  color: #ccdadc;
+}
+
+.home-section {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .home-section { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1280px) {
+  .home-section { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.tradingview-widget-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+.tradingview-widget-container__widget {
+  width: 100%;
+}
