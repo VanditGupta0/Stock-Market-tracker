@@ -12,9 +12,13 @@ export default function UserDropdown() {
       </summary>
       <div className="absolute right-0 z-20 mt-2 w-52 rounded-xl border border-white/10 bg-[#171717] p-2 shadow-2xl">
         <div className="px-3 py-2 text-xs text-slate-500">Demo account</div>
+        {/* Logout/login button */}
         <button
           type="button"
-          onClick={() => window.alert("Authentication is intentionally not included in this checkpoint.")}
+          onClick={() => {
+            document.cookie = "logged_in=; path=/; max-age=0";
+            window.location.href = "/login";
+          }}
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-white/5"
         >
           <LogOut size={15} />
