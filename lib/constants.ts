@@ -7,28 +7,28 @@ export const NAV_ITEMS = [
 export const MARKET_OVERVIEW_WIDGET_CONFIG = {
   colorTheme: "dark",
   dateRange: "12M",
-  locale: "en",
+  locale: "in",
   isTransparent: true,
   showFloatingTooltip: true,
   width: "100%",
   height: 600,
   tabs: [
-    { title: "Indices", symbols: [["NASDAQ:NDX", "Nasdaq 100"], ["SP:SPX", "S&P 500"], ["TVC:DJI", "Dow Jones"]] },
-    { title: "Stocks", symbols: [["NASDAQ:AAPL", "Apple"], ["NASDAQ:MSFT", "Microsoft"], ["NASDAQ:NVDA", "NVIDIA"]] },
+    { title: "Indices", symbols: [["BSE:SENSEX", "Sensex"], ["NSE:NIFTY", "Nifty 50"], ["NSE:BANKNIFTY", "Bank Nifty"]] },
+    { title: "Stocks", symbols: [["NSE:RELIANCE", "Reliance"], ["NSE:TCS", "TCS"], ["NSE:INFY", "Infosys"], ["NSE:HDFCBANK", "HDFC Bank"], ["NSE:ITC", "ITC"]] },
   ],
 } as Record<string, unknown>;
 
 export const HEATMAP_WIDGET_CONFIG = {
-  dataSource: "SPX500",
+  dataSource: "SENSEX",
   blockSize: "market_cap_basic",
   blockColor: "change",
   grouping: "sector",
-  locale: "en",
+  locale: "in",
   symbolUrl: "",
   colorTheme: "dark",
   exchanges: [],
   hasTopBar: true,
-  isDataSetEnabled: false,
+  isDataSetEnabled: true,
   isZoomEnabled: true,
   hasSymbolTooltip: true,
   isTransparent: true,
@@ -38,18 +38,19 @@ export const HEATMAP_WIDGET_CONFIG = {
 
 export const TOP_STORIES_WIDGET_CONFIG = {
   feedMode: "market",
+  market: "stock",
   isTransparent: true,
   displayMode: "regular",
   width: "100%",
   height: 600,
   colorTheme: "dark",
-  locale: "en",
+  locale: "in",
 } as Record<string, unknown>;
 
 export const MARKET_DATA_WIDGET_CONFIG = {
   colorTheme: "dark",
   isTransparent: true,
-  locale: "en",
+  locale: "in",
   width: "100%",
   height: 600,
   largeChartUrl: "",
@@ -59,11 +60,21 @@ export const MARKET_DATA_WIDGET_CONFIG = {
     {
       title: "Most Traded",
       symbols: [
-        ["NASDAQ:AAPL", "Apple"],
-        ["NASDAQ:MSFT", "Microsoft"],
-        ["NASDAQ:AMZN", "Amazon"],
-        ["NASDAQ:NVDA", "NVIDIA"],
-        ["NASDAQ:GOOGL", "Alphabet"],
+        ["NSE:RELIANCE", "Reliance"],
+        ["NSE:TCS", "TCS"],
+        ["NSE:HDFCBANK", "HDFC Bank"],
+        ["NSE:INFY", "Infosys"],
+        ["NSE:ITC", "ITC"],
+      ],
+    },
+    {
+      title: "Large Cap",
+      symbols: [
+        ["NSE:BHARTIARTL", "Bharti Airtel"],
+        ["NSE:SBIN", "SBI"],
+        ["NSE:LT", "L&T"],
+        ["NSE:ICICIBANK", "ICICI Bank"],
+        ["NSE:KOTAKBANK", "Kotak Bank"],
       ],
     },
   ],
