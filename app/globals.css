@@ -1,21 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #050505;
-  --panel: #141414;
+  --bg: #070708;
+  --panel: #121214;
   --text: #f3f4f6;
   --muted: #9095a1;
   --yellow: #e8ba40;
 }
 
-* { box-sizing: border-box; }
-html { background: var(--bg); }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  overflow-x: hidden;
 }
 
 .site-container {
@@ -26,42 +34,54 @@ body {
 }
 
 @media (min-width: 768px) {
-  .site-container { padding-inline: 1.5rem; }
+  .site-container {
+    padding-inline: 1.5rem;
+  }
 }
 
 @media (min-width: 1024px) {
-  .site-container { padding-inline: 2rem; }
+  .site-container {
+    padding-inline: 2rem;
+  }
 }
 
-.home-wrapper {
+/* ── Continuous Ticker Animation ── */
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
   display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
-  color: #ccdadc;
+  width: max-content;
+  animation: ticker 35s linear infinite;
 }
 
-.home-section {
-  display: grid;
-  width: 100%;
-  grid-template-columns: 1fr;
-  gap: 2rem;
+.animate-ticker:hover {
+  animation-play-state: paused;
 }
 
-@media (min-width: 768px) {
-  .home-section { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-@media (min-width: 1280px) {
-  .home-section { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+::-webkit-scrollbar-track {
+  background: #0d0d0d;
 }
 
-.tradingview-widget-container {
-  width: 100%;
-  overflow: hidden;
+::-webkit-scrollbar-thumb {
+  background: #262626;
+  border-radius: 4px;
 }
 
-.tradingview-widget-container__widget {
-  width: 100%;
+::-webkit-scrollbar-thumb:hover {
+  background: #404040;
 }
 
 /* ── LOGIN PAGE ── */
@@ -80,7 +100,7 @@ body {
   margin: 1.5rem;
   padding: 2.5rem 2rem;
   border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   background: var(--panel);
   display: flex;
   flex-direction: column;
@@ -99,8 +119,8 @@ body {
   text-align: center;
   font-size: 0.85rem;
   color: #ef4444;
-  background: rgba(239,68,68,0.08);
-  border: 1px solid rgba(239,68,68,0.15);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
   border-radius: 10px;
   padding: 0.5rem 1rem;
 }
@@ -121,19 +141,21 @@ body {
   width: 100%;
   padding: 0.7rem 1rem;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text);
   font-size: 0.9rem;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.login-input::placeholder { color: #4b5563; }
+.login-input::placeholder {
+  color: #4b5563;
+}
 
 .login-input:focus {
-  border-color: rgba(232,186,64,0.4);
-  box-shadow: 0 0 0 3px rgba(232,186,64,0.08);
+  border-color: rgba(232, 186, 64, 0.4);
+  box-shadow: 0 0 0 3px rgba(232, 186, 64, 0.08);
 }
 
 .login-submit {
@@ -151,6 +173,5 @@ body {
 
 .login-submit:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px -4px rgba(232,186,64,0.35);
+  box-shadow: 0 6px 20px -4px rgba(232, 186, 64, 0.35);
 }
-
