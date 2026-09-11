@@ -1,30 +1,101 @@
 "use client";
 
-import { ChevronDown, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-export default function UserDropdown() {
-  return (
-    <details className="relative">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1 hover:bg-white/5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400 text-sm font-bold text-black">S</span>
-        <span className="hidden text-sm font-medium text-slate-200 sm:block">Sambhav</span>
-        <ChevronDown size={16} className="text-slate-500" />
-      </summary>
-      <div className="absolute right-0 z-20 mt-2 w-52 rounded-xl border border-white/10 bg-[#171717] p-2 shadow-2xl">
-        <div className="px-3 py-2 text-xs text-slate-500">Demo account</div>
-        {/* Logout/login button */}
-        <button
-          type="button"
-          onClick={() => {
-            document.cookie = "logged_in=; path=/; max-age=0";
-            window.location.href = "/login";
-          }}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-white/5"
-        >
-          <LogOut size={15} />
-          Sign out
-        </button>
-      </div>
-    </details>
-  );
-}
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import {
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
+} from "@/components/ui/avatar";
+
+import { LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+import NavItems from "./NavItems";
+
+const UserDropdown = () => {
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        router.push("/sign-in");
+    };
+
+    const user = {
+        name: "Sambhav",
+        email: "sambhav@mail.com",
+    };
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    className="flex items-center gap-3 text-gray-400 hover:text-yellow-500"
+                >
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage src="/assets/images/profile.png" />
+                        <AvatarFallback className="bg-yellow-500 text-yellow-900 text-sm font-medium">
+                            {user.name[0]}
+                        </AvatarFallback>
+                    </Avatar>
+
+                    <div className="hidden md:flex flex-col items-start">
+            <span className="text-base font-medium text-gray-400">
+              {user.name}
+            </span>
+                    </div>
+                </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-72 text-gray-400">
+                <DropdownMenuLabel>
+                    <div className="flex relative items-center gap-3 py-2">
+                        <Avatar className="h-10 w-10">
+                            <AvatarImage src="/assets/images/profile.png" />
+                            <AvatarFallback className="bg-yellow-500 text-yellow-900 text-sm font-medium">
+                                {user.name[0]}
+                            </AvatarFallback>
+                        </Avatar>
+
+                        <div className="flex flex-col">
+              <span className="text-base font-medium text-gray-400">
+                {user.name}
+              </span>
+
+                            <span className="text-sm text-gray-500">
+                {user.email}
+              </span>
+                        </div>
+                    </div>
+                </DropdownMenuLabel>
+
+                <DropdownMenuSeparator className="bg-gray-600" />
+
+                <DropdownMenuItem
+                    onClick={handleSignOut}
+                    className="text-gray-100 text-md font-medium focus:bg-transparent focus:text-yellow-500 transition-colors"
+                >
+                    <LogOut className="h-4 w-4 mr-2 hidden sm:block" />
+                    Logout
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="hidden sm:block bg-gray-600" />
+
+                <nav className="sm:hidden">
+                    <NavItems />
+                </nav>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+};
+
+export default UserDropdown;
