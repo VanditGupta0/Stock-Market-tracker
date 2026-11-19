@@ -22,6 +22,27 @@ async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T>
 
 export { fetchJSON };
 
+const POPULAR_STOCK_NAMES: Record<string, string> = {
+    'HDFCBANK.NS': 'HDFC Bank Ltd.',
+    'ICICIBANK.NS': 'ICICI Bank Ltd.',
+    'SBIN.NS': 'State Bank of India',
+    'AXISBANK.NS': 'Axis Bank Ltd.',
+    'KOTAKBANK.NS': 'Kotak Mahindra Bank Ltd.',
+    'BAJFINANCE.NS': 'Bajaj Finance Ltd.',
+    'TCS.NS': 'Tata Consultancy Services Ltd.',
+    'INFY.NS': 'Infosys Ltd.',
+    'HCLTECH.NS': 'HCL Technologies Ltd.',
+    'WIPRO.NS': 'Wipro Ltd.',
+    'TECHM.NS': 'Tech Mahindra Ltd.',
+    'LTIM.NS': 'LTIMindtree Ltd.',
+    'RELIANCE.NS': 'Reliance Industries Ltd.',
+    'ONGC.NS': 'Oil & Natural Gas Corp. Ltd.',
+    'NTPC.NS': 'NTPC Ltd.',
+    'POWERGRID.NS': 'Power Grid Corp. of India Ltd.',
+    'ADANIENT.NS': 'Adani Enterprises Ltd.',
+    'ITC.NS': 'ITC Ltd.',
+};
+
 export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> {
     try {
         const range = getDateRange(5);
@@ -112,45 +133,18 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
         let results: FinnhubSearchResult[] = [];
 
         if (!trimmed) {
-            // Fetch top 10 popular symbols' profiles
-            const top = POPULAR_STOCK_SYMBOLS.slice(0, 10);
-            const profiles = await Promise.all(
-                top.map(async (sym) => {
-                    try {
-                        const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(sym)}&token=${token}`;
-                        // Revalidate every hour
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const profile = await fetchJSON<any>(url, 3600);
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        return { sym, profile } as { sym: string; profile: any };
-                    } catch (e) {
-                        console.error('Error fetching profile2 for', sym, e);
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        return { sym, profile: null } as { sym: string; profile: any };
-                    }
-                })
-            );
-
-            results = profiles
-                .map(({ sym, profile }) => {
-                    const symbol = sym.toUpperCase();
-                    const name: string | undefined = profile?.name || profile?.ticker || undefined;
-                    const exchange: string | undefined = profile?.exchange || undefined;
-                    if (!name) return undefined;
-                    const r: FinnhubSearchResult = {
-                        symbol,
-                        description: name,
-                        displaySymbol: symbol,
-                        type: 'Common Stock',
-                    };
-                    // We don't include exchange in FinnhubSearchResult type, so carry via mapping later using profile
-                    // To keep pipeline simple, attach exchange via closure map stage
-                    // We'll reconstruct exchange when mapping to final type
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (r as any).__exchange = exchange; // internal only
-                    return r;
-                })
-                .filter((x): x is FinnhubSearchResult => Boolean(x));
+            // Default list: top 10 popular symbols with static names.
+            // Finnhub's free plan returns 403 for /stock/profile2 on NSE (.NS) symbols,
+            // so we don't call it here.
+            results = POPULAR_STOCK_SYMBOLS.slice(0, 10).map((sym) => {
+                const symbol = sym.toUpperCase();
+                return {
+                    symbol,
+                    description: POPULAR_STOCK_NAMES[symbol] ?? symbol.replace(/\.NS$/, ''),
+                    displaySymbol: symbol,
+                    type: 'Common Stock',
+                };
+            });
         } else {
             const url = `${FINNHUB_BASE_URL}/search?q=${encodeURIComponent(trimmed)}&token=${token}`;
             const data = await fetchJSON<FinnhubSearchResponse>(url, 1800);
