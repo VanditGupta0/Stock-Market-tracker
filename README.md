@@ -2,7 +2,7 @@
 
 A full-stack stock market tracker. Sign up, search any stock, read live charts and company data, build a personal watchlist, and get an AI-written market news email every day based on what you follow.
 
-**Live demo:** https://stock-tracker-app-omega-one.vercel.app/
+**Live demo:** https://agentic-trading-six-puce.vercel.app/
 
 ## What it does
 
@@ -76,8 +76,8 @@ types/               global type declarations
 **Prerequisites:** Node.js 20+, a MongoDB database (Atlas or local), a Finnhub API key, a Gemini API key and a Gmail account with an app password.
 
 ```bash
-git clone https://github.com/sambhav3009/signalist_stock-tracker-app.git
-cd signalist_stock-tracker-app
+git clone https://github.com/VanditGupta0/Stock-Market-tracker.git
+cd Stock-Market-tracker
 npm install
 ```
 
@@ -109,7 +109,7 @@ Open http://localhost:3000.
 
 ## Deployment
 
-Deployed on Vercel. Add the same environment variables in the Vercel project settings, and connect the app to Inngest Cloud so the welcome email and daily digest functions run in production.
+Deployed on Vercel at https://agentic-trading-six-puce.vercel.app/. Add the same environment variables in the Vercel project settings, and connect the app to Inngest Cloud so the welcome email and daily digest functions run in production.
 
 ## Possible next steps
 
@@ -117,7 +117,3 @@ Deployed on Vercel. Add the same environment variables in the Vercel project set
 - Price alerts with email notifications
 - Pagination on search results
 - Redis for caching external API calls
-
-## Author
-
-Sambhav Jain, [GitHub](https://github.com/sambhav3009) · [LinkedIn](https://www.linkedin.com/in/sambhav-jain-248937317/)
