@@ -17,10 +17,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { SerializedPaperAccount } from '@/lib/actions/paperTrader.actions';
-import { createPaperTraderAccount, resetPaperTraderAccount } from '@/lib/actions/paperTrader.actions';
+import {
+    createPaperTraderAccount,
+    resetPaperTraderAccount,
+    getPaperTraderAccount,
+} from '@/lib/actions/paperTrader.actions';
+import { clearPerformanceHistory } from '@/lib/actions/paperTraderRisk.actions';
 import TradeCard from '@/components/paper-trader/TradeCard';
 import PositionCard from '@/components/paper-trader/PositionCard';
 import TradeDetailDialog from '@/components/paper-trader/TradeDetailDialog';
+import PerformanceChart from '@/components/paper-trader/PerformanceChart';
+import RiskRulesPanel from '@/components/paper-trader/RiskRulesPanel';
 
 type Tab = 'trades' | 'positions';
 
@@ -78,6 +85,12 @@ const PaperTraderClient = ({
         }
     }, []);
 
+    // ---- Reload account (used after risk rules change open positions) ----
+    const refreshAccount = useCallback(async () => {
+        const refreshed = await getPaperTraderAccount();
+        if (refreshed) setAccount(refreshed);
+    }, []);
+
     // ---- Reset account ----
     const handleReset = useCallback(async () => {
         if (!confirm('Reset your paper trading account? All trades and positions will be lost.'))
@@ -86,6 +99,7 @@ const PaperTraderClient = ({
         try {
             const result = await resetPaperTraderAccount();
             if (result) {
+                await clearPerformanceHistory();
                 setAccount(result);
                 setScanMessage('');
                 setSelectedTradeId(null);
@@ -244,6 +258,14 @@ const PaperTraderClient = ({
                     </span>
                 </div>
             )}
+
+            {/* Performance chart + stop-loss / take-profit rules */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2">
+                    <PerformanceChart budget={budget} refreshKey={account.lastScanAt} />
+                </div>
+                <RiskRulesPanel onSaved={refreshAccount} />
+            </div>
 
             {/* Tabs */}
             <div className="flex gap-1 border-b border-gray-700">

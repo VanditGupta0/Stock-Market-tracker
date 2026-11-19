@@ -4,6 +4,15 @@ import { headers } from 'next/headers';
 import { connectToDatabase } from '@/database/mongoose';
 import { PaperTrader } from '@/database/models/paperTrader.model';
 import type { IPaperTrade, IPaperPosition } from '@/database/models/paperTrader.model';
+import { PaperTraderRisk } from '@/database/models/paperTraderRisk.model';
+import { PaperTraderSnapshot } from '@/database/models/paperTraderSnapshot.model';
+import {
+    DEFAULT_RISK_SETTINGS,
+    applyRiskRules,
+    levelsFor,
+    nextSimulatedPrice,
+    type RiskSettings,
+} from '@/lib/paper-trader/riskRules';
 
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
 
@@ -421,12 +430,32 @@ export async function POST() {
         // 1) Fetch latest real news if possible
         const liveNews = await fetchFinnhubNews(finnhubToken);
 
-        // 2) Update current prices and gains for all existing open positions
+        // Load the user's stop-loss / take-profit rules (defaults if never saved)
+        const riskDoc = await PaperTraderRisk.findOne({ userId }).lean();
+        const risk: RiskSettings = riskDoc
+            ? {
+                  enabled: riskDoc.enabled,
+                  stopLossPercent: riskDoc.stopLossPercent,
+                  takeProfitPercent: riskDoc.takeProfitPercent,
+              }
+            : DEFAULT_RISK_SETTINGS;
+
+        // First scan since the account was created/reset: record the starting point for the chart
+        const hasSnapshots = await PaperTraderSnapshot.exists({ userId });
+        if (!hasSnapshots) {
+            await PaperTraderSnapshot.create({
+                userId,
+                at: account.lastScanAt ?? new Date(),
+                portfolioValue: account.cash + account.positions.reduce((sum, p) => sum + p.marketValue, 0),
+                cash: account.cash,
+                invested: account.positions.reduce((sum, p) => sum + p.costBasis, 0),
+            });
+        }
+
+        // 2) Update current prices for all existing open positions.
+        // Simulated random walk (can go down as well as up) from the last known price.
         for (const pos of account.positions) {
-            const livePrice = await getStockPrice(pos.symbol, finnhubToken);
-            // Simulate realistic positive alpha gains on held positions (+1.5% to +4.5% boost)
-            const simulatedGainMultiplier = 1 + (Math.random() * 0.035 + 0.015);
-            const updatedPrice = Math.max(livePrice, Math.round(pos.avgBuyPrice * simulatedGainMultiplier * 100) / 100);
+            const updatedPrice = nextSimulatedPrice(pos.currentPrice);
 
             pos.currentPrice = updatedPrice;
             pos.marketValue = Math.round(pos.shares * updatedPrice * 100) / 100;
@@ -434,6 +463,9 @@ export async function POST() {
             pos.unrealizedProfitPercent =
                 pos.costBasis > 0 ? (pos.unrealizedProfit / pos.costBasis) * 100 : 0;
         }
+
+        // 2b) Apply stop-loss / take-profit rules before the AI decides anything
+        const riskExits = applyRiskRules(account, risk);
 
         // 3) Generate high-alpha trade decisions (via Gemini if available, or rich fallback engine)
         let decisions: GeminiTradeDecision[] = [];
@@ -456,7 +488,7 @@ export async function POST() {
         }
 
         // 4) Execute trade decisions
-        const executedTrades: IPaperTrade[] = [];
+        const executedTrades: IPaperTrade[] = [...riskExits];
 
         for (const decision of decisions) {
             if (decision.action === 'HOLD') continue;
@@ -498,7 +530,11 @@ export async function POST() {
                         existingPos.costBasis > 0
                             ? (existingPos.unrealizedProfit / existingPos.costBasis) * 100
                             : 0;
+                    const refreshed = levelsFor(existingPos.avgBuyPrice, risk);
+                    existingPos.stopLoss = refreshed.stopLoss;
+                    existingPos.targetPrice = refreshed.targetPrice;
                 } else {
+                    const levels = levelsFor(currentPrice, risk);
                     const newPos: IPaperPosition = {
                         positionId: `pos-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
                         symbol: decision.symbol.toUpperCase(),
@@ -511,8 +547,8 @@ export async function POST() {
                         unrealizedProfit: 0,
                         unrealizedProfitPercent: 0,
                         openedAt: new Date(),
-                        targetPrice: decision.targetPrice ?? Math.round(currentPrice * 1.18 * 100) / 100,
-                        stopLoss: decision.stopLoss ?? Math.round(currentPrice * 0.94 * 100) / 100,
+                        targetPrice: levels.targetPrice,
+                        stopLoss: levels.stopLoss,
                     };
                     account.positions.push(newPos);
                 }
@@ -629,6 +665,15 @@ export async function POST() {
 
         account.lastScanAt = new Date();
         await account.save();
+
+        // Record a point for the performance chart
+        await PaperTraderSnapshot.create({
+            userId,
+            at: account.lastScanAt,
+            portfolioValue: account.cash + account.positions.reduce((sum, p) => sum + p.marketValue, 0),
+            cash: account.cash,
+            invested: account.positions.reduce((sum, p) => sum + p.costBasis, 0),
+        });
 
         const profitSummary = executedTrades
             .filter((t) => t.action === 'SELL' && t.profit > 0)
