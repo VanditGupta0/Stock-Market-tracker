@@ -15,6 +15,7 @@ import {
 } from "@/lib/agent/portfolioStore";
 import { getStockUniverse } from "@/lib/agent/marketUniverse";
 import { runAgentTradingCycle } from "@/lib/agent/reasoningEngine";
+import { BASE_CURRENCY } from "@/lib/agent/currency";
 import { MARKET_NEWS } from "@/lib/constants";
 import TradeReasoningCard from "@/components/agent/TradeReasoningCard";
 import CapitalModal from "@/components/agent/CapitalModal";
@@ -152,7 +153,7 @@ export default function AgentPage() {
         );
     }
 
-    const currencySymbol = portfolio.positions[0]?.currency || "₹";
+    const currencySymbol = BASE_CURRENCY;
     const isProfitable = portfolio.totalPnL >= 0;
 
     const getTradeTime = (trade: TradeExecution): number => {
@@ -520,7 +521,7 @@ export default function AgentPage() {
                                                 {pos.currency}{pos.currentPrice.toLocaleString()}
                                             </td>
                                             <td className="py-3.5 px-3 font-bold text-white">
-                                                {pos.currency}{pos.currentValue.toLocaleString()}
+                                                {BASE_CURRENCY}{pos.currentValue.toLocaleString()}
                                             </td>
                                             <td className="py-3.5 px-3">
                                                 <span
@@ -530,7 +531,7 @@ export default function AgentPage() {
                                                             : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                                                     }`}
                                                 >
-                                                    {isPosProfitable ? "+" : ""}{pos.currency}{pos.unrealizedPnL.toLocaleString()} ({isPosProfitable ? "+" : ""}{pos.unrealizedPnLPercent}%)
+                                                    {isPosProfitable ? "+" : ""}{BASE_CURRENCY}{pos.unrealizedPnL.toLocaleString()} ({isPosProfitable ? "+" : ""}{pos.unrealizedPnLPercent}%)
                                                 </span>
                                             </td>
                                             <td className="py-3.5 px-3 text-[11px]">

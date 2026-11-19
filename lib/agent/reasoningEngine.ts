@@ -9,6 +9,7 @@ import {
     TradeReasoning,
 } from "./types";
 import { NewsArticle } from "@/lib/constants";
+import { BASE_CURRENCY, toBase } from "./currency";
 
 interface AnalyzeParams {
     portfolio: PaperPortfolio;
@@ -40,7 +41,7 @@ export function runAgentTradingCycle({
         });
     };
 
-    addThought("Ingestion", `Agent initiated deliberation cycle with assigned capital of ${portfolio.positions[0]?.currency || "₹"}${portfolio.totalCapital.toLocaleString()}. Available cash: ${portfolio.positions[0]?.currency || "₹"}${portfolio.cash.toLocaleString()}.`);
+    addThought("Ingestion", `Agent initiated deliberation cycle with assigned capital of ${BASE_CURRENCY}${portfolio.totalCapital.toLocaleString()}. Available cash: ${BASE_CURRENCY}${portfolio.cash.toLocaleString()}.`);
 
     // Ingest custom breaking news if provided
     const combinedNews = [...newsArticles];
@@ -88,8 +89,10 @@ export function runAgentTradingCycle({
         }
 
         const currentPrice = liveStock.price;
-        const unrealizedPnL = Number(((currentPrice - position.averageBuyPrice) * position.shares).toFixed(2));
-        const unrealizedPnLPercent = Number((((currentPrice - position.averageBuyPrice) / position.averageBuyPrice) * 100).toFixed(2));
+        // Prices are in the stock's own currency; money amounts are in INR (portfolio base).
+        const currentValue = toBase(currentPrice * position.shares, position.currency);
+        const unrealizedPnL = Number((currentValue - position.totalCost).toFixed(2));
+        const unrealizedPnLPercent = Number(((unrealizedPnL / position.totalCost) * 100).toFixed(2));
 
         let shouldSell = false;
         let sellReason = "";
@@ -115,7 +118,7 @@ export function runAgentTradingCycle({
         }
 
         if (shouldSell) {
-            const saleProceeds = Number((currentPrice * position.shares).toFixed(2));
+            const saleProceeds = currentValue;
             currentCash = Number((currentCash + saleProceeds).toFixed(2));
             realizedPnL = Number((realizedPnL + unrealizedPnL).toFixed(2));
             totalTrades += 1;
@@ -127,8 +130,8 @@ export function runAgentTradingCycle({
                 marketTrend: `Price action reached ${currentPrice > position.averageBuyPrice ? "target resistance" : "support breakdown"} level at ${position.currency}${currentPrice}.`,
                 sentimentScore: liveStock.sentimentScore,
                 sentimentLabel: liveStock.sentimentLabel,
-                riskAssessment: `Realized ${unrealizedPnL >= 0 ? "profit" : "loss"} of ${position.currency}${Math.abs(unrealizedPnL)} (${unrealizedPnLPercent}%).`,
-                allocationReason: `Liquidated entire position of ${position.shares} shares to free up ${position.currency}${saleProceeds} in cash.`,
+                riskAssessment: `Realized ${unrealizedPnL >= 0 ? "profit" : "loss"} of ${BASE_CURRENCY}${Math.abs(unrealizedPnL).toLocaleString()} (${unrealizedPnLPercent}%).`,
+                allocationReason: `Liquidated entire position of ${position.shares} shares to free up ${BASE_CURRENCY}${saleProceeds.toLocaleString()} in cash.`,
                 targetPrice: position.targetPrice,
                 stopLoss: position.stopLoss,
                 confidence: 90,
@@ -159,7 +162,7 @@ export function runAgentTradingCycle({
             updatedPositions.push({
                 ...position,
                 currentPrice,
-                currentValue: Number((currentPrice * position.shares).toFixed(2)),
+                currentValue,
                 unrealizedPnL,
                 unrealizedPnLPercent,
             });
@@ -258,7 +261,7 @@ export function runAgentTradingCycle({
     addThought("Analysis", `Top ranked assets by algorithmic conviction: ${candidates.slice(0, 3).map((c) => `${c.stock.symbol} (Score: ${c.compositeScore})`).join(", ")}.`);
 
     // --- PHASE 3: POSITION SIZING & TRADE EXECUTION ---
-    addThought("Risk Sizing", `Calculating position limits. Max allocation per asset: 20-25% of total capital (${portfolio.positions[0]?.currency || "₹"}${(portfolio.totalCapital * 0.22).toFixed(0)}).`);
+    addThought("Risk Sizing", `Calculating position limits. Max allocation per asset: 20-25% of total capital (${BASE_CURRENCY}${(portfolio.totalCapital * 0.22).toFixed(0)}).`);
 
     const maxAllocationPerStock = portfolio.totalCapital * (strategy === "aggressive" ? 0.28 : 0.22);
     const minScoreThreshold = strategy === "aggressive" ? 65 : strategy === "value" ? 58 : 62;
@@ -280,16 +283,19 @@ export function runAgentTradingCycle({
         const maxBudgetForThis = maxAllocationPerStock - currentHeldCost;
         const allocationBudget = Math.min(maxBudgetForThis, currentCash);
 
+        // Cost of one share converted to INR (portfolio base currency)
+        const pricePerShareBase = toBase(stock.price, stock.currency);
+
         // Can we afford at least 1 share?
-        if (allocationBudget < stock.price) {
+        if (allocationBudget < pricePerShareBase) {
             continue;
         }
 
         // Sizing shares
-        const sharesToBuy = Math.floor(allocationBudget / stock.price);
+        const sharesToBuy = Math.floor(allocationBudget / pricePerShareBase);
         if (sharesToBuy <= 0) continue;
 
-        const totalCost = Number((sharesToBuy * stock.price).toFixed(2));
+        const totalCost = toBase(sharesToBuy * stock.price, stock.currency);
         currentCash = Number((currentCash - totalCost).toFixed(2));
         totalTrades += 1;
 
@@ -309,7 +315,7 @@ export function runAgentTradingCycle({
 
         const riskAssessment = `Asymmetric Risk/Reward: Target set at ${stock.currency}${targetPrice} (+${(targetPercent * 100).toFixed(1)}%), with capital protection stop-loss strictly defined at ${stock.currency}${stopLoss} (-${(stopLossPercent * 100).toFixed(1)}%). Expected Risk/Reward ratio: ${(targetPercent / stopLossPercent).toFixed(1)}:1.`;
 
-        const allocationReason = `Allocated ${stock.currency}${totalCost.toLocaleString()} (${((totalCost / portfolio.totalCapital) * 100).toFixed(1)}% of total portfolio capital) for ${sharesToBuy} shares, strictly adhering to our risk budget and single-asset ceiling.`;
+        const allocationReason = `Allocated ${BASE_CURRENCY}${totalCost.toLocaleString()} (${((totalCost / portfolio.totalCapital) * 100).toFixed(1)}% of total portfolio capital) for ${sharesToBuy} shares, strictly adhering to our risk budget and single-asset ceiling.`;
 
         const reasoning: TradeReasoning = {
             thesis,
@@ -346,8 +352,11 @@ export function runAgentTradingCycle({
         if (existingPosition) {
             const newTotalShares = existingPosition.shares + sharesToBuy;
             const newTotalCost = Number((existingPosition.totalCost + totalCost).toFixed(2));
-            const newAvgPrice = Number((newTotalCost / newTotalShares).toFixed(2));
-            const newCurrentValue = Number((newTotalShares * stock.price).toFixed(2));
+            // Average buy price stays in the stock's own currency
+            const newAvgPrice = Number(
+                ((existingPosition.averageBuyPrice * existingPosition.shares + stock.price * sharesToBuy) / newTotalShares).toFixed(2)
+            );
+            const newCurrentValue = toBase(newTotalShares * stock.price, stock.currency);
             const newUnrealized = Number((newCurrentValue - newTotalCost).toFixed(2));
 
             const idx = positions.findIndex((p) => p.symbol === stock.symbol);
@@ -384,7 +393,7 @@ export function runAgentTradingCycle({
             });
         }
 
-        addThought("Execution", `EXECUTED BUY: ${stock.symbol} x ${sharesToBuy} @ ${stock.currency}${stock.price} (${stock.currency}${totalCost.toLocaleString()}). Catalyst: "${candidate.primaryCatalyst.slice(0, 60)}..."`);
+        addThought("Execution", `EXECUTED BUY: ${stock.symbol} x ${sharesToBuy} @ ${stock.currency}${stock.price} (${BASE_CURRENCY}${totalCost.toLocaleString()}). Catalyst: "${candidate.primaryCatalyst.slice(0, 60)}..."`);
 
         // Stop if we executed enough trades for this cycle or ran out of cash
         if (tradesExecuted.length >= 3 || currentCash < portfolio.totalCapital * 0.05) {
@@ -428,7 +437,7 @@ export function runAgentTradingCycle({
             : "Neutral";
 
     const summary = tradesExecuted.length > 0
-        ? `Deliberation complete: Executed ${tradesExecuted.length} trade(s) based on sentiment catalysts and trend signals. Portfolio Net Worth: ${portfolio.positions[0]?.currency || "₹"}${currentValue.toLocaleString()} (${totalPnL >= 0 ? "+" : ""}${totalPnLPercent}%).`
+        ? `Deliberation complete: Executed ${tradesExecuted.length} trade(s) based on sentiment catalysts and trend signals. Portfolio Net Worth: ${BASE_CURRENCY}${currentValue.toLocaleString()} (${totalPnL >= 0 ? "+" : ""}${totalPnLPercent}%).`
         : `Deliberation complete: All assets analyzed. No reallocation required. Retaining current strategic weights.`;
 
     addThought("Execution", summary);

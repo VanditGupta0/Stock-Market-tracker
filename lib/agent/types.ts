@@ -42,13 +42,13 @@ export interface Position {
     symbol: string;
     name: string;
     sector: string;
-    currency: string;
+    currency: string; // quote currency of the stock (applies to per-share prices)
     shares: number;
-    averageBuyPrice: number;
-    currentPrice: number;
-    totalCost: number;
-    currentValue: number;
-    unrealizedPnL: number;
+    averageBuyPrice: number; // in `currency`
+    currentPrice: number; // in `currency`
+    totalCost: number; // INR (portfolio base)
+    currentValue: number; // INR (portfolio base)
+    unrealizedPnL: number; // INR (portfolio base)
     unrealizedPnLPercent: number;
     targetPrice: number;
     stopLoss: number;
@@ -63,11 +63,11 @@ export interface TradeExecution {
     action: "BUY" | "SELL";
     symbol: string;
     name: string;
-    price: number;
+    price: number; // in `currency`
     shares: number;
-    totalAmount: number;
-    currency: string;
-    realizedPnL?: number;
+    totalAmount: number; // INR (portfolio base)
+    currency: string; // quote currency of the stock
+    realizedPnL?: number; // INR (portfolio base)
     realizedPnLPercent?: number;
     reasoning: TradeReasoning;
 }

@@ -1,6 +1,6 @@
 import { PaperPortfolio, StrategyProfile } from "./types";
 
-const STORAGE_KEY = "signalist_agent_portfolio_v1";
+const STORAGE_KEY = "signalist_agent_portfolio_v2";
 
 export function createInitialPortfolio(initialCapital: number = 100000, strategy: StrategyProfile = "balanced"): PaperPortfolio {
     return {

@@ -59,7 +59,7 @@ export default function CapitalModal({
                     {/* Amount Input */}
                     <div>
                         <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                            Trading Capital (₹ / $)
+                            Trading Capital (₹)
                         </label>
                         <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-lg">

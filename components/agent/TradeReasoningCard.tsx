@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { TradeExecution } from "@/lib/agent/types";
+import { BASE_CURRENCY } from "@/lib/agent/currency";
 import {
     TrendingUp,
     TrendingDown,
@@ -113,7 +114,7 @@ export default function TradeReasoningCard({
                             {shares} {shares === 1 ? "share" : "shares"} @ {currency}{price.toLocaleString()}
                         </div>
                         <div className="text-sm font-bold text-white tracking-tight">
-                            Total: {currency}{totalAmount.toLocaleString()}
+                            Total: {BASE_CURRENCY}{totalAmount.toLocaleString()}
                         </div>
                         {realizedPnL !== undefined && (
                             <div
@@ -121,7 +122,7 @@ export default function TradeReasoningCard({
                                     realizedPnL >= 0 ? "text-emerald-400" : "text-rose-400"
                                 }`}
                             >
-                                P&L: {realizedPnL >= 0 ? "+" : ""}{currency}{realizedPnL.toLocaleString()}
+                                P&L: {realizedPnL >= 0 ? "+" : ""}{BASE_CURRENCY}{realizedPnL.toLocaleString()}
                                 {realizedPnLPercent !== undefined && ` (${realizedPnLPercent >= 0 ? "+" : ""}${realizedPnLPercent}%)`}
                             </div>
                         )}
