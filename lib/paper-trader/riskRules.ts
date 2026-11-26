@@ -23,15 +23,6 @@ export function levelsFor(entryPrice: number, settings: RiskSettings) {
 }
 
 /**
- * Simulated next price: a random move of up to +/- maxMovePercent from the previous price.
- * Moves are symmetric, so prices can fall as well as rise (needed for stop-losses to ever trigger).
- */
-export function nextSimulatedPrice(previous: number, maxMovePercent = 3) {
-    const move = ((Math.random() * 2 - 1) * maxMovePercent) / 100;
-    return Math.max(0.01, round2(previous * (1 + move)));
-}
-
-/**
  * Closes every open position whose price has crossed its stop-loss or take-profit level.
  * Mutates `account` (positions, cash, profit counters, trade history) and returns the new trades.
  * The caller is responsible for calling account.save().

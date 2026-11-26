@@ -12,10 +12,10 @@ A full-stack stock market tracker. Sign up, search any stock, read live charts a
 - **Watchlist.** Add or remove stocks with one click. Each watchlist belongs to the signed-in user and is stored in MongoDB.
 - **Authentication.** Email and password sign up and sign in with session cookies. Sign up also collects country, investment goals, risk tolerance and preferred industry.
 - **Personalized emails.** A welcome email written by Gemini from your sign-up profile, plus a daily news digest built from the stocks on your watchlist (it falls back to general market news if your watchlist is empty).
-- **AI Paper Trader** (`/paper-trader`). Start a virtual account with a budget of your choice. Each scan reads the latest market news, asks Gemini for buy/sell decisions (with a built-in fallback engine if Gemini or news is unavailable), and executes them against your virtual cash. Includes:
+- **AI Paper Trader** (`/paper-trader`). Start a virtual account with a budget of your choice. Each scan fetches live prices (Yahoo Finance for NSE stocks, Finnhub for US stocks) and the latest market news, asks Gemini for buy/sell decisions, and executes them against your virtual cash at the live price. Includes:
   - **Stop-loss and take-profit rules** you can turn on and tune (default 5% / 10%). They are applied to open positions before the AI makes new decisions.
   - **Performance chart** of portfolio value over time, saved after every scan.
-  - Open positions, trade history and a detail view with the AI's reasoning for each trade.
+  - Open positions revalued at live prices on every scan, with the time of each price, plus trade history and a detail view with the AI's reasoning for each trade.
   - Everything is stored per user in MongoDB, so it follows you across devices.
 - **AI Trader agent** (`/agent`). An interactive trading agent that shows its thinking step by step (ingestion, analysis, decision) as it trades a paper portfolio. Pick a strategy (balanced, aggressive or value), set your starting capital, and inject your own breaking news headline to see how the agent reacts. The portfolio is in INR, and US-dollar stocks are converted at a fixed reference rate. This portfolio is saved in the browser (`localStorage`).
 - **Learn section.** A stock market basics guide with Indian market examples (NSE, BSE, NIFTY 50, Sensex).
@@ -32,7 +32,7 @@ A full-stack stock market tracker. Sign up, search any stock, read live charts a
 | Background jobs | Inngest (event-driven functions and a cron) |
 | AI | Google Gemini (through Inngest for emails, and directly for paper-trader decisions) |
 | Email | Nodemailer |
-| Market data | Finnhub API (search, company news, profiles), TradingView embedded widgets (charts) |
+| Market data | Finnhub API (search, company news, profiles, US quotes), Yahoo Finance (NSE quotes for the paper trader), TradingView embedded widgets (charts) |
 | Forms | React Hook Form |
 
 ## How it works
@@ -47,7 +47,7 @@ Next.js App Router (Server Components + Server Actions)
    |-- Inngest events ----> background functions
    |                           |-- Gemini (email copy and news summaries)
    |                           |-- Nodemailer (delivery)
-   |-- /api/paper-trader/scan -> Finnhub news + quotes -> Gemini trade decisions -> MongoDB
+   |-- /api/paper-trader/scan -> live quotes (Yahoo Finance / Finnhub) + Finnhub news -> Gemini trade decisions -> MongoDB
    |-- /api/agent ------------> rule-based reasoning engine (no external calls)
 ```
 
@@ -60,7 +60,8 @@ A few decisions worth pointing out:
 - **Caching.** Finnhub requests use Next.js `revalidate` (1 hour for profiles, 30 minutes for search, 5 minutes for news). `searchStocks` is wrapped in React `cache()` to dedupe calls in one render.
 - **Connection reuse.** The Mongoose connection is cached on `global` so serverless invocations don't open a new connection every time.
 - **Risk rules before AI.** In each paper-trader scan, stop-loss and take-profit exits run first, then Gemini decides on new trades. Trades are checked for affordability before they execute, and every scan saves a snapshot for the performance chart.
-- **Graceful AI fallback.** If there is no Gemini key, no live news, or Gemini returns nothing usable, the paper trader falls back to a built-in decision engine, so a scan always produces a result.
+- **Live prices, never invented ones.** Every scan prices open positions and new trades from live quotes. NSE stocks come from Yahoo Finance because Finnhub's free plan returns 403 for them, and US stocks come from Finnhub and are converted to INR. If a quote can't be fetched, the position keeps its last known price and a trade in that stock is skipped, and the scan result says so.
+- **Graceful AI fallback.** If Gemini can't be reached or its reply can't be read, the paper trader falls back to simple rules based only on live prices: take partial profit on a position up 8% or more, and buy the strongest gainers of the day. These trades are labelled as rule-based and don't cite any news.
 - **One base currency.** The AI trader keeps the portfolio in INR and converts USD prices before any money moves, so Indian and US stocks can sit in the same portfolio.
 - **Charts offloaded to TradingView.** Chart rendering and price streaming happen client-side through TradingView widgets, so none of that load hits this server.
 
@@ -81,7 +82,8 @@ hooks/               useDebounce, useTradingViewWidget
 lib/
   actions/           server actions (auth, user, watchlist, finnhub, paper trader, risk settings)
   agent/             AI trader reasoning engine, stock universe, currency conversion
-  paper-trader/      stop-loss / take-profit rules
+  market/            live stock quotes (Yahoo Finance for NSE, Finnhub for US)
+  paper-trader/      trade decisions (Gemini and rule-based fallback), stop-loss / take-profit rules, tradable stock list
   better-auth/       auth config
   inngest/           client, functions, prompts
   nodemailer/        transporter and email templates
@@ -111,7 +113,7 @@ NODEMAILER_EMAIL=
 NODEMAILER_PASSWORD=
 ```
 
-The Finnhub free plan does not cover NSE symbols (it returns 403), so the default Indian stocks use built-in names and reference prices when live data isn't available.
+The Finnhub free plan does not cover NSE symbols (it returns 403). The paper trader gets NSE prices from Yahoo Finance's public chart endpoint instead, which needs no API key, and the dashboard's default Indian stocks use built-in names.
 
 Run the app:
 
@@ -133,13 +135,12 @@ Deployed on Vercel at https://agentic-trading-six-puce.vercel.app/. Add the same
 
 ## Known limitations
 
-- Paper-trader open positions are revalued with a simulated price move on each scan, not with live quotes, and NSE stocks fall back to reference prices. Treat P&L as a simulation.
+- Paper-trader prices come from Yahoo Finance's unofficial chart endpoint for NSE stocks. It has no API key or published rate limits and could change without notice. When the market is closed, prices are the last close.
 - The AI Trader (`/agent`) and the Paper Trader (`/paper-trader`) are separate portfolios. The agent's is stored in the browser only.
 - The USD/INR rate is a fixed reference value.
 
 ## Possible next steps
 
-- Live quotes for paper-trader positions, including NSE stocks
 - Price alerts with email notifications
 - Merge the AI Trader and Paper Trader into one portfolio stored in MongoDB
 - Real-time prices over the Finnhub WebSocket

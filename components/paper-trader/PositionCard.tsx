@@ -75,6 +75,17 @@ export default function PositionCard({ position }: { position: SerializedPositio
                         <span className="text-gray-100 font-bold">
                             ₹{position.currentPrice.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </span>
+                        {/* Server and browser time zones can differ, so the formatted time may not match on hydration */}
+                        <span className="text-[10px] text-gray-500 block" suppressHydrationWarning>
+                            {position.priceUpdatedAt
+                                ? `Live price as of ${new Date(position.priceUpdatedAt).toLocaleString('en-IN', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      hour: 'numeric',
+                                      minute: '2-digit',
+                                  })}`
+                                : 'Not a live price yet. Scan to update.'}
+                        </span>
                     </div>
                     <div>
                         <span className="text-gray-500 block">Market Value</span>

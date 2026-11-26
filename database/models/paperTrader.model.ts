@@ -45,6 +45,8 @@ export interface IPaperPosition {
     shares: number;
     avgBuyPrice: number;
     currentPrice: number;
+    /** When `currentPrice` was last traded on the exchange. Missing on positions opened before live prices. */
+    priceUpdatedAt?: Date;
     costBasis: number;
     marketValue: number;
     unrealizedProfit: number;
@@ -129,6 +131,7 @@ const PaperPositionSchema = new Schema(
         shares: { type: Number, required: true },
         avgBuyPrice: { type: Number, required: true },
         currentPrice: { type: Number, required: true },
+        priceUpdatedAt: { type: Date },
         costBasis: { type: Number, required: true },
         marketValue: { type: Number, required: true },
         unrealizedProfit: { type: Number, default: 0 },

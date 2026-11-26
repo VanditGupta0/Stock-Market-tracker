@@ -16,6 +16,7 @@ function serializePosition(p: IPaperPosition) {
         shares: p.shares,
         avgBuyPrice: p.avgBuyPrice,
         currentPrice: p.currentPrice,
+        priceUpdatedAt: p.priceUpdatedAt ? new Date(p.priceUpdatedAt).toISOString() : null,
         costBasis: p.costBasis,
         marketValue: p.marketValue,
         unrealizedProfit: p.unrealizedProfit,
