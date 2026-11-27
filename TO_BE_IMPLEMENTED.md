@@ -4,7 +4,6 @@ Features and fixes to work on later. Remove an item from this file once it's don
 
 ## Fixes
 
-- [ ] **Two separate portfolio systems.** `/agent` saves its portfolio in the browser's `localStorage`, so it's lost on another device. `/paper-trader` saves to MongoDB.
 - [ ] **No tests.** There is no `test` script in `package.json`, and the lint script is misspelled as `linyt`.
 - [ ] **MongoDB username in the server log.** The server log prints the MongoDB username and cluster address (the password is hidden).
 

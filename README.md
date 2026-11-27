@@ -17,7 +17,7 @@ A full-stack stock market tracker. Sign up, search any stock, read live charts a
   - **Performance chart** of portfolio value over time, saved after every scan.
   - Open positions revalued at live prices on every scan, with the time of each price, plus trade history and a detail view with the AI's reasoning for each trade.
   - Everything is stored per user in MongoDB, so it follows you across devices.
-- **AI Trader agent** (`/agent`). An interactive trading agent that shows its thinking step by step (ingestion, analysis, decision) as it trades a paper portfolio. Pick a strategy (balanced, aggressive or value), set your starting capital, and inject your own breaking news headline to see how the agent reacts. The portfolio is in INR, and US-dollar stocks are converted at a fixed reference rate. This portfolio is saved in the browser (`localStorage`).
+- **AI Trader agent** (`/agent`). An autonomous agent that trades its own paper portfolio of NSE large caps. Each cycle fetches live prices (Yahoo Finance) and live market news (Finnhub), closes positions that hit their stop-loss or take-profit, and asks Gemini for new trades. Every Gemini trade is checked in code before it runs: only stocks on the agent's list, 10-25% of cash per buy, a per-stock cap, news links must match an article that was actually fetched, no re-buying a stock just stopped out, and at most one trade per stock and three trades per cycle. If Gemini is unavailable the agent makes no new trades. The page shows the agent's step-by-step log for the last cycle. Pick a strategy (balanced, aggressive or value), set your starting capital, run cycles by hand or on auto-pilot (every 60 seconds), and send a hypothetical breaking-news headline to see how it reacts. The portfolio is stored per user in MongoDB, separate from the Paper Trader account.
 - **Learn section.** A stock market basics guide with Indian market examples (NSE, BSE, NIFTY 50, Sensex).
 - **Engineering page.** An in-app write-up of the architecture, trade-offs and optimizations, at `/engineering`.
 
@@ -48,7 +48,7 @@ Next.js App Router (Server Components + Server Actions)
    |                           |-- Gemini (email copy and news summaries)
    |                           |-- Nodemailer (delivery)
    |-- /api/paper-trader/scan -> live quotes (Yahoo Finance / Finnhub) + Finnhub news -> Gemini trade decisions -> MongoDB
-   |-- /api/agent ------------> rule-based reasoning engine (no external calls)
+   |-- /api/agent ------------> live quotes (Yahoo Finance) + Finnhub news -> Gemini -> safety checks -> MongoDB
 ```
 
 A few decisions worth pointing out:
@@ -81,7 +81,7 @@ database/            Mongoose connection and models (watchlist, paper trader, ri
 hooks/               useDebounce, useTradingViewWidget
 lib/
   actions/           server actions (auth, user, watchlist, finnhub, paper trader, risk settings)
-  agent/             AI trader reasoning engine, stock universe, currency conversion
+  agent/             AI trader engine (Gemini + safety checks), strategies, stock list, currency conversion
   market/            live stock quotes (Yahoo Finance for NSE, Finnhub for US)
   paper-trader/      trade decisions (Gemini and rule-based fallback), stop-loss / take-profit rules, tradable stock list
   better-auth/       auth config
@@ -136,7 +136,8 @@ Deployed on Vercel at https://agentic-trading-six-puce.vercel.app/. Add the same
 ## Known limitations
 
 - Paper-trader prices come from Yahoo Finance's unofficial chart endpoint for NSE stocks. It has no API key or published rate limits and could change without notice. When the market is closed, prices are the last close.
-- The AI Trader (`/agent`) and the Paper Trader (`/paper-trader`) are separate portfolios. The agent's is stored in the browser only.
+- The AI Trader (`/agent`) and the Paper Trader (`/paper-trader`) are separate portfolios, both stored in MongoDB.
+- The AI Trader trades whenever a cycle runs, including when the market is closed (at the last close).
 - The USD/INR rate is a fixed reference value.
 
 ## Possible next steps

@@ -3,20 +3,13 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
     PaperPortfolio,
-    StockAsset,
     StrategyProfile,
     AgentThoughtStep,
-    TradeExecution,
+    AgentState,
+    AgentCycleResponse,
 } from "@/lib/agent/types";
-import {
-    loadPortfolioFromStorage,
-    savePortfolioToStorage,
-    resetPortfolio,
-} from "@/lib/agent/portfolioStore";
-import { getStockUniverse } from "@/lib/agent/marketUniverse";
-import { runAgentTradingCycle } from "@/lib/agent/reasoningEngine";
 import { BASE_CURRENCY } from "@/lib/agent/currency";
-import { MARKET_NEWS } from "@/lib/constants";
+import { STRATEGIES } from "@/lib/agent/strategy";
 import TradeReasoningCard from "@/components/agent/TradeReasoningCard";
 import CapitalModal from "@/components/agent/CapitalModal";
 import ThoughtStream from "@/components/agent/ThoughtStream";
@@ -38,135 +31,136 @@ import {
     Target,
     Search,
     Info,
-    SlidersHorizontal,
-    ListFilter
 } from "lucide-react";
+
+// Each cycle calls Gemini and fetches live quotes, so auto-pilot runs once a minute.
+const AUTO_PILOT_INTERVAL_MS = 60000;
+
+const formatTime = (iso: string) =>
+    new Date(iso).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+/** The API sends ISO times; show them in the viewer's locale. */
+function localize(state: AgentState): AgentState {
+    return {
+        portfolio: {
+            ...state.portfolio,
+            tradeHistory: state.portfolio.tradeHistory.map((t) => ({ ...t, timestamp: formatTime(t.timestamp) })),
+        },
+        thoughts: state.thoughts.map((t) => ({ ...t, timestamp: formatTime(t.timestamp) })),
+    };
+}
+
+async function callAgentApi<T>(method: "GET" | "POST" | "PUT", body?: unknown): Promise<T> {
+    const res = await fetch("/api/agent", {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+        cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`);
+    return data as T;
+}
 
 export default function AgentPage() {
     const [portfolio, setPortfolio] = useState<PaperPortfolio | null>(null);
-    const [stocks, setStocks] = useState<StockAsset[]>([]);
     const [thoughts, setThoughts] = useState<AgentThoughtStep[]>([]);
     const [isDeliberating, setIsDeliberating] = useState<boolean>(false);
     const [autoPilot, setAutoPilot] = useState<boolean>(false);
     const [isCapitalModalOpen, setIsCapitalModalOpen] = useState<boolean>(false);
     const [tradeFilter, setTradeFilter] = useState<"ALL" | "BUY" | "SELL">("ALL");
     const [searchQuery, setSearchQuery] = useState<string>("");
+    const [status, setStatus] = useState<{ kind: "info" | "error"; text: string } | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const runningRef = useRef(false);
 
-    // Initial load
-    useEffect(() => {
-        const initial = loadPortfolioFromStorage(100000);
-        setPortfolio(initial);
-        const initialStocks = getStockUniverse();
-        setStocks(initialStocks);
-
-        // If fresh portfolio with no trades, run initial deliberation cycle
-        if (initial.tradeHistory.length === 0) {
-            triggerAgentCycle(initial, initialStocks, undefined);
-        }
+    const applyState = useCallback((state: AgentState) => {
+        const local = localize(state);
+        setPortfolio(local.portfolio);
+        setThoughts(local.thoughts);
     }, []);
 
-    // Core function to execute an agent deliberation cycle
+    // Initial load from MongoDB
+    useEffect(() => {
+        callAgentApi<AgentState>("GET")
+            .then(applyState)
+            .catch((err: Error) => setLoadError(err.message));
+    }, [applyState]);
+
+    // Runs one agent cycle on the server: live prices, live news, Gemini, safety checks.
     const triggerAgentCycle = useCallback(
-        async (
-            currentPortfolio?: PaperPortfolio,
-            currentStocks?: StockAsset[],
-            customNewsHeadline?: string
-        ) => {
-            const p = currentPortfolio || portfolio;
-            if (!p) return;
-            const s = currentStocks || getStockUniverse();
-
+        async (breakingNews?: string) => {
+            if (runningRef.current) return;
+            runningRef.current = true;
             setIsDeliberating(true);
-
-            // Give a realistic 600ms micro-delay for animation
-            await new Promise((resolve) => setTimeout(resolve, 600));
-
             try {
-                const result = runAgentTradingCycle({
-                    portfolio: p,
-                    stocks: s,
-                    newsArticles: MARKET_NEWS,
-                    strategy: p.strategy,
-                    customNewsHeadline,
-                });
-
-                setPortfolio(result.portfolio);
-                setStocks(s);
-                savePortfolioToStorage(result.portfolio);
-                setThoughts(result.thoughts);
+                const result = await callAgentApi<AgentCycleResponse>("POST", breakingNews ? { breakingNews } : {});
+                applyState(result);
+                setStatus({ kind: result.decisionSource === "gemini" ? "info" : "error", text: result.summary });
             } catch (err) {
-                console.error("Agent deliberation failed:", err);
+                setStatus({ kind: "error", text: (err as Error).message });
             } finally {
+                runningRef.current = false;
                 setIsDeliberating(false);
             }
         },
-        [portfolio]
+        [applyState]
     );
 
-    // Auto-pilot timer
-    const autoPilotRef = useRef<NodeJS.Timeout | null>(null);
+    // Auto-pilot timer. A tick is skipped while a cycle is still running.
     useEffect(() => {
-        if (autoPilot) {
-            autoPilotRef.current = setInterval(() => {
-                const freshStocks = getStockUniverse();
-                triggerAgentCycle(undefined, freshStocks, undefined);
-            }, 25000); // cycle every 25 seconds
-        } else if (autoPilotRef.current) {
-            clearInterval(autoPilotRef.current);
-            autoPilotRef.current = null;
-        }
-
-        return () => {
-            if (autoPilotRef.current) clearInterval(autoPilotRef.current);
-        };
+        if (!autoPilot) return;
+        const id = setInterval(() => triggerAgentCycle(), AUTO_PILOT_INTERVAL_MS);
+        return () => clearInterval(id);
     }, [autoPilot, triggerAgentCycle]);
 
-    // Handle Capital assignment from modal
-    const handleAssignCapital = (newCapital: number, newStrategy: StrategyProfile) => {
-        const fresh = resetPortfolio(newCapital, newStrategy);
-        setPortfolio(fresh);
-        const freshStocks = getStockUniverse();
-        setStocks(freshStocks);
-        setThoughts([]);
-        triggerAgentCycle(fresh, freshStocks, undefined);
+    const resetAccount = async (capital: number, strategy: StrategyProfile) => {
+        const state = await callAgentApi<AgentState>("PUT", { capital, strategy });
+        applyState(state);
+        setStatus(null);
+    };
+
+    // Handle Capital assignment from modal: reset with the new capital, then run a first cycle
+    const handleAssignCapital = async (newCapital: number, newStrategy: StrategyProfile) => {
+        try {
+            await resetAccount(newCapital, newStrategy);
+            await triggerAgentCycle();
+        } catch (err) {
+            setStatus({ kind: "error", text: (err as Error).message });
+        }
     };
 
     // Manual reset
-    const handleReset = () => {
-        if (window.confirm("Are you sure you want to reset your Paper Trading account? All current positions and trades will be wiped.")) {
-            const capital = portfolio?.totalCapital || 100000;
-            const strat = portfolio?.strategy || "balanced";
-            const fresh = resetPortfolio(capital, strat);
-            setPortfolio(fresh);
-            setThoughts([]);
+    const handleReset = async () => {
+        if (!window.confirm("Are you sure you want to reset the AI Trader account? All current positions and trades will be wiped.")) return;
+        try {
+            await resetAccount(portfolio?.totalCapital || 100000, portfolio?.strategy || "balanced");
+        } catch (err) {
+            setStatus({ kind: "error", text: (err as Error).message });
         }
     };
 
     if (!portfolio) {
         return (
             <div className="flex min-h-[60vh] items-center justify-center">
-                <div className="flex items-center gap-3 text-amber-400">
-                    <RefreshCw className="h-6 w-6 animate-spin" />
-                    <span className="text-sm font-semibold">Initializing Apex AI Trader...</span>
-                </div>
+                {loadError ? (
+                    <span className="text-sm font-semibold text-rose-400">{loadError}</span>
+                ) : (
+                    <div className="flex items-center gap-3 text-amber-400">
+                        <RefreshCw className="h-6 w-6 animate-spin" />
+                        <span className="text-sm font-semibold">Initializing Apex AI Trader...</span>
+                    </div>
+                )}
             </div>
         );
     }
 
     const currencySymbol = BASE_CURRENCY;
     const isProfitable = portfolio.totalPnL >= 0;
-
-    const getTradeTime = (trade: TradeExecution): number => {
-        if (trade.timestampMs) return trade.timestampMs;
-        const match = trade.id.match(/trade-(\d+)/);
-        if (match && match[1]) {
-            return parseInt(match[1], 10);
-        }
-        return 0;
-    };
+    const strategyConfig = STRATEGIES[portfolio.strategy] ?? STRATEGIES.balanced;
 
     // Strictly sort so the topmost trade is guaranteed to be the most recent one
-    const sortedTrades = [...portfolio.tradeHistory].sort((a, b) => getTradeTime(b) - getTradeTime(a));
+    const sortedTrades = [...portfolio.tradeHistory].sort((a, b) => b.timestampMs - a.timestampMs);
 
     const filteredTrades = sortedTrades.filter((trade) => {
         const matchesFilter = tradeFilter === "ALL" || trade.action === tradeFilter;
@@ -199,7 +193,7 @@ export default function AgentPage() {
                                     </span>
                                 </div>
                                 <p className="text-xs lg:text-sm text-slate-400">
-                                    Executes paper trades based on real-time news sentiment and technical trends, with complete chain-of-thought rationale.
+                                    Gemini picks paper trades from live NSE prices and live market news. Every trade is checked against risk limits before it executes.
                                 </p>
                             </div>
                         </div>
@@ -217,7 +211,7 @@ export default function AgentPage() {
                             }`}
                         >
                             {autoPilot ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                            <span>Auto-Pilot: {autoPilot ? "ON (25s)" : "OFF"}</span>
+                            <span>Auto-Pilot: {autoPilot ? "ON (60s)" : "OFF"}</span>
                         </button>
 
                         {/* Assign Capital */}
@@ -260,14 +254,26 @@ export default function AgentPage() {
                     </div>
 
                     <div className="flex items-center gap-4 text-xs">
-                        <span>Max Position Cap: <strong className="text-white">22%</strong></span>
+                        <span>Max Position Cap: <strong className="text-white">{strategyConfig.maxPositionPercent}%</strong></span>
                         <span>•</span>
-                        <span>Stop-Loss Protocol: <strong className="text-rose-400">-4.0%</strong></span>
+                        <span>Stop-Loss Protocol: <strong className="text-rose-400">-{strategyConfig.stopLossPercent.toFixed(1)}%</strong></span>
                         <span>•</span>
-                        <span>Profit Objective: <strong className="text-emerald-400">+11.0%</strong></span>
+                        <span>Profit Objective: <strong className="text-emerald-400">+{strategyConfig.takeProfitPercent.toFixed(1)}%</strong></span>
                     </div>
                 </div>
             </div>
+
+            {status && (
+                <div
+                    className={`rounded-xl border px-4 py-3 text-xs font-medium ${
+                        status.kind === "error"
+                            ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
+                            : "border-amber-400/30 bg-amber-400/[0.06] text-amber-200"
+                    }`}
+                >
+                    {status.text}
+                </div>
+            )}
 
             {/* Portfolio Summary Metrics Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -458,7 +464,7 @@ export default function AgentPage() {
 
             {/* Interactive News Catalyst Simulator */}
             <BreakingNewsSimulator
-                onInjectNews={(headline) => triggerAgentCycle(undefined, undefined, headline)}
+                onInjectNews={(headline) => triggerAgentCycle(headline)}
                 isRunning={isDeliberating}
             />
 
@@ -474,7 +480,7 @@ export default function AgentPage() {
                                 Current Active Holdings ({portfolio.positions.length})
                             </h3>
                             <p className="text-xs text-slate-400">
-                                Real-time valuation and stop-loss targets of open paper positions
+                                Valued at the live price from the last agent cycle, with stop-loss and take-profit levels
                             </p>
                         </div>
                     </div>
