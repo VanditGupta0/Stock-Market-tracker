@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { NewsArticle } from "@/lib/constants";
-import { PRESET_BREAKING_NEWS } from "@/lib/agent/marketUniverse";
+import { PRESET_BREAKING_NEWS } from "@/lib/agent/presetNews";
 import { Flame, Send, Sparkles, Newspaper } from "lucide-react";
 
 interface BreakingNewsSimulatorProps {
@@ -34,7 +34,7 @@ export default function BreakingNewsSimulator({ onInjectNews, isRunning }: Break
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-white tracking-wide">Live News & Catalyst Simulator</h3>
-                        <p className="text-[11px] text-slate-400">Feed custom breaking news to trigger immediate autonomous agent decisions</p>
+                        <p className="text-[11px] text-slate-400">Send a hypothetical headline to the agent (marked as unverified) and see how it reacts</p>
                     </div>
                 </div>
 
@@ -70,7 +70,7 @@ export default function BreakingNewsSimulator({ onInjectNews, isRunning }: Break
             {/* Preset Breaking Headlines */}
             <div className="mt-3">
                 <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                    Or select a live scenario to test agent reaction:
+                    Or pick a hypothetical scenario to test the agent&apos;s reaction:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {PRESET_BREAKING_NEWS.map((item) => (

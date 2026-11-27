@@ -187,6 +187,23 @@ export default function TradeReasoningCard({
                                 <p className="text-slate-300 leading-relaxed font-medium">
                                     {reasoning.newsCatalyst}
                                 </p>
+                                {(reasoning.newsSource || reasoning.newsUrl) && (
+                                    <p className="mt-2 text-[11px] text-slate-400">
+                                        {reasoning.newsSource && <span>Source: {reasoning.newsSource}</span>}
+                                        {reasoning.newsSource && reasoning.newsUrl && <span> • </span>}
+                                        {reasoning.newsUrl && (
+                                            <a
+                                                href={reasoning.newsUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="text-amber-400 hover:underline"
+                                            >
+                                                Read article
+                                            </a>
+                                        )}
+                                    </p>
+                                )}
                             </div>
                         </div>
 

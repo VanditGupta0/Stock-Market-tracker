@@ -1,35 +1,22 @@
-import { NewsArticle } from "@/lib/constants";
+/**
+ * Shapes the AI Trader page works with. The portfolio is stored in MongoDB
+ * (database/models/agentPortfolio.model.ts) and sent to the page in this form by /api/agent.
+ * All money amounts are in INR.
+ */
 
 export type TradeAction = "BUY" | "SELL" | "HOLD";
 
 export type StrategyProfile = "balanced" | "aggressive" | "value";
 
-export interface StockAsset {
-    symbol: string;
-    name: string;
-    sector: string;
-    currency: string;
-    price: number;
-    change: number;
-    percentChange: number;
-    peRatio: number;
-    marketCap: string;
-    trend: "Strong Uptrend" | "Bullish" | "Neutral" | "Bearish" | "Strong Downtrend";
-    rsi: number;
-    movingAverage50: number;
-    movingAverage200: number;
-    volume24h: string;
-    sentimentScore: number; // -1.0 to 1.0
-    sentimentLabel: "Strongly Bullish" | "Bullish" | "Neutral" | "Bearish" | "Strongly Bearish";
-    catalystSummary: string;
-    relatedNewsIds: string[];
-}
-
 export interface TradeReasoning {
     thesis: string;
     newsCatalyst: string;
+    /** Where the cited news came from. Only set when the article was verified against fetched news. */
+    newsSource?: string;
+    /** Link to the cited article. Only set when it matches an article the agent actually fetched. */
+    newsUrl?: string;
     marketTrend: string;
-    sentimentScore: number;
+    sentimentScore: number; // -1.0 to 1.0
     sentimentLabel: string;
     riskAssessment: string;
     allocationReason: string;
@@ -42,13 +29,15 @@ export interface Position {
     symbol: string;
     name: string;
     sector: string;
-    currency: string; // quote currency of the stock (applies to per-share prices)
+    currency: string;
     shares: number;
-    averageBuyPrice: number; // in `currency`
-    currentPrice: number; // in `currency`
-    totalCost: number; // INR (portfolio base)
-    currentValue: number; // INR (portfolio base)
-    unrealizedPnL: number; // INR (portfolio base)
+    averageBuyPrice: number;
+    currentPrice: number;
+    /** ISO time of the last trade behind `currentPrice`. */
+    priceUpdatedAt?: string;
+    totalCost: number;
+    currentValue: number;
+    unrealizedPnL: number;
     unrealizedPnLPercent: number;
     targetPrice: number;
     stopLoss: number;
@@ -58,16 +47,17 @@ export interface Position {
 
 export interface TradeExecution {
     id: string;
+    /** Display time, formatted in the viewer's locale. */
     timestamp: string;
-    timestampMs?: number;
+    timestampMs: number;
     action: "BUY" | "SELL";
     symbol: string;
     name: string;
-    price: number; // in `currency`
+    price: number;
     shares: number;
-    totalAmount: number; // INR (portfolio base)
-    currency: string; // quote currency of the stock
-    realizedPnL?: number; // INR (portfolio base)
+    totalAmount: number;
+    currency: string;
+    realizedPnL?: number;
     realizedPnLPercent?: number;
     reasoning: TradeReasoning;
 }
@@ -80,6 +70,7 @@ export interface PaperPortfolio {
     totalPnL: number;
     totalPnLPercent: number;
     realizedPnL: number;
+    /** Share of closed (SELL) trades that made a profit, in percent. */
     winRate: number;
     totalTrades: number;
     winningTrades: number;
@@ -93,15 +84,18 @@ export interface AgentThoughtStep {
     step: number;
     phase: "Ingestion" | "Analysis" | "Valuation" | "Risk Sizing" | "Execution";
     message: string;
+    /** Display time, formatted in the viewer's locale. */
     timestamp: string;
 }
 
-export interface AgentCycleResult {
-    cycleId: string;
-    timestamp: string;
-    marketSentimentSummary: "Bullish" | "Neutral" | "Bearish";
-    thoughts: AgentThoughtStep[];
-    tradesExecuted: TradeExecution[];
+/** What /api/agent returns: the portfolio and the thought log of the last cycle. */
+export interface AgentState {
     portfolio: PaperPortfolio;
+    thoughts: AgentThoughtStep[];
+}
+
+export interface AgentCycleResponse extends AgentState {
+    tradesExecuted: number;
+    decisionSource: "gemini" | "unavailable";
     summary: string;
 }
