@@ -5,6 +5,7 @@ import { PaperTrader } from '@/database/models/paperTrader.model';
 import type { PaperTraderDoc, IPaperTrade, IPaperPosition } from '@/database/models/paperTrader.model';
 import { auth } from '@/lib/better-auth/auth';
 import { headers } from 'next/headers';
+import { ensureBaselineSnapshot, recordSnapshot } from '@/lib/paper-trader/execution';
 
 // ---- Serialization helpers ----
 
@@ -169,4 +170,44 @@ export async function resetPaperTraderAccount(newBudget?: number): Promise<Seria
     const refreshed = await PaperTrader.findById(existing._id).lean<PaperTraderDoc>();
     if (!refreshed) return null;
     return serializeAccount(refreshed);
+}
+
+/** Largest single deposit allowed (₹1 crore), to catch typos like extra zeros. */
+const MAX_DEPOSIT = 10_000_000;
+
+export type AddFundsResult = { ok: true; account: SerializedPaperAccount } | { ok: false; error: string };
+
+/**
+ * Add virtual money to the account. Cash and budget both go up by the amount, so profit and loss
+ * (realized + unrealized) are unchanged and the deposit never counts as a gain.
+ */
+export async function addPaperTraderFunds(amount: number): Promise<AddFundsResult> {
+    const userId = await getSessionUserId();
+    if (!userId) return { ok: false, error: 'Please sign in again.' };
+
+    const value = Math.round(Number(amount) * 100) / 100;
+    if (!Number.isFinite(value) || value < 1) return { ok: false, error: 'Enter an amount of at least ₹1.' };
+    if (value > MAX_DEPOSIT) return { ok: false, error: 'You can add up to ₹1,00,00,000 at a time.' };
+
+    await connectToDatabase();
+
+    const existing = await PaperTrader.findOne({ userId });
+    if (!existing) return { ok: false, error: 'No paper trading account found. Create one first.' };
+
+    // Chart point before the deposit, so the chart has a starting point at the old budget.
+    await ensureBaselineSnapshot(userId, existing);
+
+    // Atomic increment, so a deposit can't be lost to a trade saving the account at the same time.
+    const updated = await PaperTrader.findOneAndUpdate(
+        { userId },
+        { $inc: { cash: value, budget: value }, $set: { lastScanAt: new Date() } },
+        { new: true }
+    );
+    if (!updated) return { ok: false, error: 'Could not add funds. Please try again.' };
+
+    updated.cash = Math.round(updated.cash * 100) / 100;
+    updated.budget = Math.round(updated.budget * 100) / 100;
+    await recordSnapshot(userId, updated);
+
+    return { ok: true, account: serializeAccount(updated.toObject() as PaperTraderDoc) };
 }

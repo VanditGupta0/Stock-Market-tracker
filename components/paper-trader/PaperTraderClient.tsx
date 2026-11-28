@@ -12,6 +12,7 @@ import {
     Target,
     PieChart,
     RotateCcw,
+    PlusCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import {
     createPaperTraderAccount,
     resetPaperTraderAccount,
     getPaperTraderAccount,
+    addPaperTraderFunds,
 } from '@/lib/actions/paperTrader.actions';
 import { clearPerformanceHistory } from '@/lib/actions/paperTraderRisk.actions';
 import TradeCard from '@/components/paper-trader/TradeCard';
@@ -44,6 +46,10 @@ const PaperTraderClient = ({
     const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('trades');
     const [statusMessage, setStatusMessage] = useState('');
+    const [showAddFunds, setShowAddFunds] = useState(false);
+    const [fundsInput, setFundsInput] = useState('');
+    const [addingFunds, setAddingFunds] = useState(false);
+    const [fundsError, setFundsError] = useState('');
 
     // ---- Create account ----
     const handleCreate = useCallback(async () => {
@@ -97,6 +103,32 @@ const PaperTraderClient = ({
             setResetting(false);
         }
     }, []);
+
+    // ---- Add funds: raises cash and budget by the same amount, so P&L is unchanged ----
+    const handleAddFunds = useCallback(async () => {
+        const amount = Number(fundsInput);
+        if (!Number.isFinite(amount) || amount < 1) {
+            setFundsError('Enter an amount of at least ₹1.');
+            return;
+        }
+        setAddingFunds(true);
+        setFundsError('');
+        try {
+            const result = await addPaperTraderFunds(amount);
+            if (!result.ok) {
+                setFundsError(result.error);
+                return;
+            }
+            setAccount(result.account);
+            setStatusMessage(`Added ₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })} to your cash.`);
+            setFundsInput('');
+            setShowAddFunds(false);
+        } catch {
+            setFundsError('Network error. Please try again.');
+        } finally {
+            setAddingFunds(false);
+        }
+    }, [fundsInput]);
 
     const selectedTrade =
         account?.trades.find((t) => t.tradeId === selectedTradeId) ?? null;
@@ -170,7 +202,7 @@ const PaperTraderClient = ({
                     icon={<PieChart className="h-5 w-5 text-yellow-500" />}
                     label="Portfolio Value"
                     value={`₹${portfolioValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
-                    sub={`Budget: ₹${budget.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                    sub={`Total funded: ₹${budget.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                 />
                 <StatCard
                     icon={
@@ -210,6 +242,18 @@ const PaperTraderClient = ({
                     {refreshing ? 'Updating prices…' : 'Refresh Prices'}
                 </Button>
                 <Button
+                    onClick={() => {
+                        setShowAddFunds((v) => !v);
+                        setFundsError('');
+                    }}
+                    variant="outline"
+                    aria-expanded={showAddFunds}
+                    className="gap-2 text-gray-400 border-gray-600 hover:text-gray-100 hover:border-gray-500"
+                >
+                    <PlusCircle className="h-4 w-4" />
+                    Add Funds
+                </Button>
+                <Button
                     onClick={handleReset}
                     disabled={resetting}
                     variant="outline"
@@ -222,6 +266,79 @@ const PaperTraderClient = ({
                     <span className="text-sm text-gray-400 ml-2">{statusMessage}</span>
                 )}
             </div>
+
+            {/* Add funds form */}
+            {showAddFunds && (
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        handleAddFunds();
+                    }}
+                    className="flex flex-col gap-3 px-4 py-4 rounded-lg bg-gray-800 border border-gray-600"
+                >
+                    <div>
+                        <h2 className="text-base font-semibold text-gray-100">Add funds</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            Adds virtual cash to trade with. Your budget goes up by the same amount, so it doesn&apos;t count
+                            as profit.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {[10000, 50000, 100000].map((preset) => (
+                            <button
+                                key={preset}
+                                type="button"
+                                onClick={() => {
+                                    setFundsInput(String(preset));
+                                    setFundsError('');
+                                }}
+                                className="h-9 px-3 rounded-md text-sm border border-gray-600 text-gray-300 hover:border-yellow-500 hover:text-yellow-500 cursor-pointer"
+                            >
+                                +₹{preset.toLocaleString('en-IN')}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-3 w-full max-w-md">
+                        <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₹</span>
+                            <label htmlFor="add-funds-amount" className="sr-only">
+                                Amount to add
+                            </label>
+                            <Input
+                                id="add-funds-amount"
+                                type="number"
+                                min={1}
+                                step="any"
+                                inputMode="decimal"
+                                value={fundsInput}
+                                onChange={(e) => {
+                                    setFundsInput(e.target.value);
+                                    setFundsError('');
+                                }}
+                                placeholder="Amount"
+                                className="form-input pl-7"
+                                autoFocus
+                            />
+                        </div>
+                        <Button type="submit" disabled={addingFunds || !fundsInput} className="yellow-btn px-6 shrink-0">
+                            {addingFunds ? 'Adding…' : 'Add'}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setShowAddFunds(false)}
+                            className="text-gray-400 hover:text-gray-100 shrink-0"
+                        >
+                            Cancel
+                        </Button>
+                    </div>
+                    {fundsError && (
+                        <p className="text-xs text-red-400" role="alert">
+                            {fundsError}
+                        </p>
+                    )}
+                </form>
+            )}
 
             {/* Unrealized P&L bar */}
             {positions.length > 0 && (

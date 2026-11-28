@@ -9,7 +9,9 @@ const shortDate = (iso: string) =>
     new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 /**
- * Portfolio value after each scan, against the starting budget.
+ * Portfolio value after each trade or refresh, against the total money put in.
+ * Deposits are taken out of the line: each point is shifted up by the funds added after it, so adding
+ * money never looks like a gain. Points saved before deposits were tracked are left as they are.
  * `refreshKey` should change whenever the account changes (e.g. lastScanAt) so the chart reloads.
  */
 export default function PerformanceChart({
@@ -19,7 +21,7 @@ export default function PerformanceChart({
     budget: number;
     refreshKey: string;
 }) {
-    const [points, setPoints] = useState<PerformancePoint[]>([]);
+    const [rawPoints, setPoints] = useState<PerformancePoint[]>([]);
     const [loaded, setLoaded] = useState(false);
     const [hover, setHover] = useState<number | null>(null);
 
@@ -36,6 +38,11 @@ export default function PerformanceChart({
             cancelled = true;
         };
     }, [refreshKey]);
+
+    const points = useMemo(
+        () => rawPoints.map((p) => ({ ...p, portfolioValue: p.portfolioValue + (budget - (p.budget ?? budget)) })),
+        [rawPoints, budget]
+    );
 
     const stats = useMemo(() => {
         if (points.length < 2) return null;
@@ -112,7 +119,7 @@ export default function PerformanceChart({
                         preserveAspectRatio="none"
                         className="absolute inset-0 h-full w-full"
                         role="img"
-                        aria-label={`Portfolio value over time, currently ${inr(last)} against a starting budget of ${inr(budget)}`}
+                        aria-label={`Portfolio value over time, currently ${inr(last)} against total funds of ${inr(budget)}`}
                     >
                         <defs>
                             <linearGradient id="perf-fill" x1="0" y1="0" x2="0" y2="1">
@@ -135,7 +142,7 @@ export default function PerformanceChart({
                     </svg>
 
                     <span className="absolute left-1 text-[11px] text-gray-500" style={{ top: `calc(${(chart.baselineY / chart.H) * 100}% - 16px)` }}>
-                        Starting budget {inr(budget)}
+                        Total funded {inr(budget)}
                     </span>
 
                     {hover !== null && hovered && (

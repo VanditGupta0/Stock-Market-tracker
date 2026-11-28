@@ -13,7 +13,8 @@ async function getSessionUserId(): Promise<string | null> {
     return session?.user?.id ?? null;
 }
 
-export type PerformancePoint = { at: string; portfolioValue: number };
+/** `budget` is the money put in at that point (null on points saved before deposits were tracked). */
+export type PerformancePoint = { at: string; portfolioValue: number; budget: number | null };
 
 /** Saved risk rules for the logged-in user (defaults if none saved yet). */
 export async function getRiskSettings(): Promise<RiskSettings> {
@@ -83,6 +84,7 @@ export async function getPerformanceHistory(): Promise<PerformancePoint[]> {
     return docs.reverse().map((d) => ({
         at: new Date(d.at).toISOString(),
         portfolioValue: d.portfolioValue,
+        budget: d.budget ?? null,
     }));
 }
 
