@@ -13,6 +13,8 @@ export default function TradeCard({
 }) {
     const isBuy = trade.action === 'BUY';
     const isProfit = trade.profit > 0;
+    // Trades from the old AI trader have a confidence score. Manual orders and rule exits have 0.
+    const isAiTrade = trade.confidenceScore > 0;
     const timeAgo = formatTimeAgo(Math.floor(new Date(trade.executedAt).getTime() / 1000));
 
     return (
@@ -86,16 +88,20 @@ export default function TradeCard({
                     <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-gray-700/70 text-gray-300 border border-gray-600/50">
                         {trade.strategy}
                     </span>
-                    <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-600/15 text-blue-400 border border-blue-600/30">
-                        {trade.marketTrend.trendName}
-                    </span>
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-500 ml-auto">
-                        {trade.confidenceScore}% Conviction
-                    </span>
+                    {isAiTrade && (
+                        <>
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-600/15 text-blue-400 border border-blue-600/30">
+                                {trade.marketTrend.trendName}
+                            </span>
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-500 ml-auto">
+                                {trade.confidenceScore}% Conviction
+                            </span>
+                        </>
+                    )}
                 </div>
 
                 {/* News Catalyst Snippet */}
-                {trade.newsCatalyst?.headline && (
+                {isAiTrade && trade.newsCatalyst?.headline && (
                     <div className="bg-gray-900/60 rounded-lg p-2.5 border border-gray-700/60 mb-3">
                         <div className="flex items-center gap-1.5 text-xs text-yellow-500 font-medium mb-1">
                             <Newspaper className="h-3.5 w-3.5 shrink-0" />
@@ -112,7 +118,7 @@ export default function TradeCard({
             <div className="pt-3 border-t border-gray-700/60 flex items-center justify-between text-xs text-gray-400">
                 <span>{timeAgo}</span>
                 <span className="text-yellow-500 font-medium group-hover:translate-x-0.5 transition-transform">
-                    View AI Thought Process →
+                    View details →
                 </span>
             </div>
         </div>

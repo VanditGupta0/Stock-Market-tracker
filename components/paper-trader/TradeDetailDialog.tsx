@@ -32,6 +32,8 @@ export default function TradeDetailDialog({
 
     const isBuy = trade.action === 'BUY';
     const isProfit = trade.profit > 0;
+    // Trades from the old AI trader have a confidence score. Manual orders and rule exits have 0.
+    const isAiTrade = trade.confidenceScore > 0;
     const dateFormatted = new Date(trade.executedAt).toLocaleString('en-IN', {
         dateStyle: 'medium',
         timeStyle: 'short',
@@ -118,30 +120,35 @@ export default function TradeDetailDialog({
                             </span>
                         </div>
                         <div>
-                            <span className="text-gray-500 block mb-0.5">Strategy / Risk-Reward</span>
+                            <span className="text-gray-500 block mb-0.5">
+                                {isAiTrade ? 'Strategy / Risk-Reward' : 'Order type'}
+                            </span>
                             <span className="text-yellow-500 font-semibold text-sm">
-                                {trade.riskReward} R:R
+                                {isAiTrade ? `${trade.riskReward} R:R` : trade.strategy}
                             </span>
                         </div>
                     </div>
 
-                    {/* SECTION 1: AI Thought Process */}
+                    {/* SECTION 1: Rationale (AI trades) or order notes (manual orders and rule exits) */}
                     <div className="rounded-xl border border-yellow-500/30 bg-gradient-to-b from-yellow-500/10 to-transparent p-4">
                         <div className="flex items-center justify-between mb-2.5">
                             <div className="flex items-center gap-2 text-yellow-500 font-bold text-sm">
-                                <Bot className="h-4 w-4" />
-                                <span>AI Thought Process & Rationale</span>
+                                {isAiTrade ? <Bot className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
+                                <span>{isAiTrade ? 'AI Thought Process & Rationale' : 'Order details'}</span>
                             </div>
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                                {trade.confidenceScore}% Confidence Score
-                            </span>
+                            {isAiTrade && (
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                                    {trade.confidenceScore}% Confidence Score
+                                </span>
+                            )}
                         </div>
                         <p className="text-sm text-gray-200 leading-relaxed">
                             {trade.thoughtProcess}
                         </p>
                     </div>
 
-                    {/* SECTION 2: Catalyzing News */}
+                    {/* SECTION 2: Catalyzing News (AI trades only) */}
+                    {isAiTrade && (
                     <div className="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
@@ -188,7 +195,10 @@ export default function TradeDetailDialog({
                         )}
                     </div>
 
-                    {/* SECTION 3: Current Market Trend & Setup */}
+                    )}
+
+                    {/* SECTION 3: Current Market Trend & Setup (AI trades only) */}
+                    {isAiTrade && (
                     <div className="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
                         <div className="flex items-center gap-2 text-teal-400 font-bold text-sm mb-3">
                             <TrendingUp className="h-4 w-4" />
@@ -241,6 +251,7 @@ export default function TradeDetailDialog({
                             </div>
                         )}
                     </div>
+                    )}
                 </div>
             </DialogContent>
         </Dialog>

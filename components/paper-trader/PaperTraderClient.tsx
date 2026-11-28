@@ -2,12 +2,11 @@
 
 import { useState, useCallback } from 'react';
 import {
-    Bot,
+    Wallet,
     DollarSign,
     TrendingUp,
     TrendingDown,
     BarChart3,
-    Zap,
     RefreshCw,
     Trophy,
     Target,
@@ -28,6 +27,7 @@ import PositionCard from '@/components/paper-trader/PositionCard';
 import TradeDetailDialog from '@/components/paper-trader/TradeDetailDialog';
 import PerformanceChart from '@/components/paper-trader/PerformanceChart';
 import RiskRulesPanel from '@/components/paper-trader/RiskRulesPanel';
+import TradePanel from '@/components/paper-trader/TradePanel';
 
 type Tab = 'trades' | 'positions';
 
@@ -39,11 +39,11 @@ const PaperTraderClient = ({
     const [account, setAccount] = useState(initialAccount);
     const [budgetInput, setBudgetInput] = useState('100000');
     const [creating, setCreating] = useState(false);
-    const [scanning, setScanning] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('trades');
-    const [scanMessage, setScanMessage] = useState('');
+    const [statusMessage, setStatusMessage] = useState('');
 
     // ---- Create account ----
     const handleCreate = useCallback(async () => {
@@ -58,38 +58,27 @@ const PaperTraderClient = ({
         }
     }, [budgetInput]);
 
-    // ---- Scan market (trigger AI trades) ----
-    const handleScan = useCallback(async () => {
-        setScanning(true);
-        setScanMessage('');
-        try {
-            const res = await fetch('/api/paper-trader/scan', { method: 'POST' });
-            const data = await res.json();
-
-            if (data.error) {
-                setScanMessage(data.error);
-            } else {
-                setScanMessage(data.message ?? `Executed ${data.trades} trade(s).`);
-            }
-
-            // Refresh account data
-            const { getPaperTraderAccount: getAcc } = await import(
-                '@/lib/actions/paperTrader.actions'
-            );
-            const refreshed = await getAcc();
-            if (refreshed) setAccount(refreshed);
-        } catch {
-            setScanMessage('Network error. Please try again.');
-        } finally {
-            setScanning(false);
-        }
-    }, []);
-
-    // ---- Reload account (used after risk rules change open positions) ----
+    // ---- Reload account (after a trade, or after risk rules change open positions) ----
     const refreshAccount = useCallback(async () => {
         const refreshed = await getPaperTraderAccount();
         if (refreshed) setAccount(refreshed);
     }, []);
+
+    // ---- Refresh prices: revalue positions at live prices and apply stop-loss / take-profit rules ----
+    const handleRefreshPrices = useCallback(async () => {
+        setRefreshing(true);
+        setStatusMessage('');
+        try {
+            const res = await fetch('/api/paper-trader/scan', { method: 'POST' });
+            const data = await res.json();
+            setStatusMessage(data.error ?? data.message ?? 'Prices updated.');
+            await refreshAccount();
+        } catch {
+            setStatusMessage('Network error. Please try again.');
+        } finally {
+            setRefreshing(false);
+        }
+    }, [refreshAccount]);
 
     // ---- Reset account ----
     const handleReset = useCallback(async () => {
@@ -101,7 +90,7 @@ const PaperTraderClient = ({
             if (result) {
                 await clearPerformanceHistory();
                 setAccount(result);
-                setScanMessage('');
+                setStatusMessage('');
                 setSelectedTradeId(null);
             }
         } finally {
@@ -117,15 +106,15 @@ const PaperTraderClient = ({
         return (
             <div className="flex flex-col items-center justify-center gap-6 py-16">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 flex items-center justify-center">
-                    <Bot className="h-10 w-10 text-yellow-500" />
+                    <Wallet className="h-10 w-10 text-yellow-500" />
                 </div>
                 <div className="text-center max-w-md">
                     <h2 className="text-2xl font-bold text-gray-100 mb-2">
-                        Start AI Paper Trading
+                        Start Paper Trading
                     </h2>
                     <p className="text-gray-500 text-base mb-6">
-                        Assign a budget and let the AI trade Indian stocks based on
-                        real-time news and market trends. No real money involved.
+                        Assign a budget and trade Indian stocks yourself at live market
+                        prices. You choose every trade. No real money involved.
                     </p>
                 </div>
                 <div className="flex items-center gap-3 w-full max-w-sm">
@@ -213,16 +202,12 @@ const PaperTraderClient = ({
             {/* Actions */}
             <div className="flex flex-wrap items-center gap-3">
                 <Button
-                    onClick={handleScan}
-                    disabled={scanning}
+                    onClick={handleRefreshPrices}
+                    disabled={refreshing}
                     className="yellow-btn px-5 gap-2"
                 >
-                    {scanning ? (
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                        <Zap className="h-4 w-4" />
-                    )}
-                    {scanning ? 'AI is analyzing…' : 'Scan Market & Trade'}
+                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    {refreshing ? 'Updating prices…' : 'Refresh Prices'}
                 </Button>
                 <Button
                     onClick={handleReset}
@@ -233,8 +218,8 @@ const PaperTraderClient = ({
                     <RotateCcw className="h-4 w-4" />
                     Reset Account
                 </Button>
-                {scanMessage && (
-                    <span className="text-sm text-gray-400 ml-2">{scanMessage}</span>
+                {statusMessage && (
+                    <span className="text-sm text-gray-400 ml-2">{statusMessage}</span>
                 )}
             </div>
 
@@ -259,12 +244,13 @@ const PaperTraderClient = ({
                 </div>
             )}
 
-            {/* Performance chart + stop-loss / take-profit rules */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2">
+            {/* Order form, performance chart and stop-loss / take-profit rules */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                <div className="lg:col-span-2 flex flex-col gap-4">
                     <PerformanceChart budget={budget} refreshKey={account.lastScanAt} />
+                    <RiskRulesPanel onSaved={refreshAccount} />
                 </div>
-                <RiskRulesPanel onSaved={refreshAccount} />
+                <TradePanel account={account} onTraded={refreshAccount} />
             </div>
 
             {/* Tabs */}
@@ -288,7 +274,7 @@ const PaperTraderClient = ({
                         <EmptyState
                             icon={<Target className="h-12 w-12 text-gray-500" />}
                             title="No trades yet"
-                            description="Hit 'Scan Market & Trade' to let the AI analyze news and execute trades."
+                            description="Use 'Place an order' to buy your first stock at the live price."
                         />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -310,7 +296,7 @@ const PaperTraderClient = ({
                         <EmptyState
                             icon={<PieChart className="h-12 w-12 text-gray-500" />}
                             title="No open positions"
-                            description="The AI will open positions when it finds high-conviction opportunities."
+                            description="Positions appear here after you buy a stock."
                         />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

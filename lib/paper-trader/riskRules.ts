@@ -82,8 +82,9 @@ export function applyRiskRules(account: PaperTraderDoc, settings: RiskSettings):
                 timeframe: 'Rule-based',
                 volumeProfile: 'n/a',
             },
-            confidenceScore: 100,
-            riskReward: `${settings.stopLossPercent}% stop / ${settings.takeProfitPercent}% target`,
+            // 0 marks the trade as not AI-generated (the model requires a number here)
+            confidenceScore: 0,
+            riskReward: '',
         };
 
         account.trades.unshift(trade);

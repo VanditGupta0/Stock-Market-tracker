@@ -1,6 +1,6 @@
 /**
- * NSE large caps the paper trader looks at for new buys. Every scan fetches a live quote for
- * each of these, and both Gemini and the rule-based fallback pick from this list.
+ * NSE large caps the paper trader lets you buy. Pick one in the order form and it fills at the
+ * live quote.
  *
  * Tata Motors was split in 2025: the old TATAMOTORS.NS ticker is delisted, and the passenger
  * vehicle business now trades as TMPV.NS.
