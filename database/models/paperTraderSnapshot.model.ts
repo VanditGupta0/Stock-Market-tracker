@@ -7,6 +7,8 @@ export interface PaperTraderSnapshotDoc extends Document {
     portfolioValue: number;
     cash: number;
     invested: number;
+    /** Total money put into the account at this point (starting budget plus deposits). Missing on older points. */
+    budget?: number;
 }
 
 const PaperTraderSnapshotSchema = new Schema<PaperTraderSnapshotDoc>({
@@ -15,6 +17,7 @@ const PaperTraderSnapshotSchema = new Schema<PaperTraderSnapshotDoc>({
     portfolioValue: { type: Number, required: true },
     cash: { type: Number, required: true },
     invested: { type: Number, required: true },
+    budget: { type: Number },
 });
 
 PaperTraderSnapshotSchema.index({ userId: 1, at: 1 });

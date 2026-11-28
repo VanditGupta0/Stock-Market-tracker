@@ -38,6 +38,7 @@ function snapshotValues(account: PaperTraderDoc) {
         portfolioValue: round2(account.cash + account.positions.reduce((sum, p) => sum + p.marketValue, 0)),
         cash: account.cash,
         invested: round2(account.positions.reduce((sum, p) => sum + p.costBasis, 0)),
+        budget: account.budget,
     };
 }
 
