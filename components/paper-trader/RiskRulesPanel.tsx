@@ -115,8 +115,8 @@ export default function RiskRulesPanel({ onSaved }: { onSaved: () => void | Prom
             </div>
 
             <p className="text-xs text-gray-500 leading-relaxed">
-                Checked on every scan. A position is sold in full when its price falls to the stop-loss or rises to the
-                take-profit level. Applies to new buys and to positions that are open now.
+                Checked each time you refresh prices. A position is sold in full when its price falls to the stop-loss or
+                rises to the take-profit level. Applies to new buys and to positions that are open now.
             </p>
 
             <div className="flex items-center gap-3">

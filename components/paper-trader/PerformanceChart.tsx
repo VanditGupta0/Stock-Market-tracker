@@ -86,14 +86,14 @@ export default function PerformanceChart({
                     <h2 className="text-base font-semibold text-gray-100">Portfolio performance</h2>
                 </div>
                 <span className="text-xs text-gray-500">
-                    {hovered ? `${shortDate(hovered.at)} · ${inr(hovered.portfolioValue)}` : 'Value after each scan'}
+                    {hovered ? `${shortDate(hovered.at)} · ${inr(hovered.portfolioValue)}` : 'Value after each trade or refresh'}
                 </span>
             </div>
 
             {!chart ? (
                 <div className="h-60 flex items-center justify-center text-sm text-gray-500 text-center px-6">
                     {loaded
-                        ? 'Run Scan Market & Trade to start your chart. It needs at least one scan to draw a line.'
+                        ? 'Place an order or refresh prices to start your chart. It needs at least two points to draw a line.'
                         : 'Loading…'}
                 </div>
             ) : (
