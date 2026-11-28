@@ -3,7 +3,7 @@ import {Label} from "@/components/ui/label";
 import {Input} from "@/components/ui/input";
 import {cn} from "@/lib/utils";
 
-const InputField = ({ name, label, placeholder, type = "text", register, error, validation, disabled, value }: FormInputProps) => {
+const InputField = ({ name, label, placeholder, type = "text", register, error, validation, disabled }: FormInputProps) => {
     const errorId = error ? `${name}-error` : undefined;
     return (
         <div className="space-y-2">

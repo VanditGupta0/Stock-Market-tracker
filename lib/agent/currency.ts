@@ -4,7 +4,7 @@
 
 export const BASE_CURRENCY = "₹";
 
-// Static USD/INR reference rate (matches the USD/INR ticker in lib/constants).
+// Static USD/INR reference rate.
 export const USD_INR_RATE = 83.92;
 
 const RATES_TO_INR: Record<string, number> = {
@@ -20,9 +20,4 @@ export function getRateToBase(currency: string): number {
         throw new Error(`No INR conversion rate configured for currency "${currency}"`);
     }
     return rate;
-}
-
-/** Convert an amount quoted in `currency` into the portfolio base currency (INR). */
-export function toBase(amount: number, currency: string): number {
-    return Number((amount * getRateToBase(currency)).toFixed(2));
 }

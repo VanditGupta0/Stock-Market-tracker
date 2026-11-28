@@ -4,8 +4,6 @@
  * All money amounts are in INR.
  */
 
-export type TradeAction = "BUY" | "SELL" | "HOLD";
-
 export type StrategyProfile = "balanced" | "aggressive" | "value";
 
 export interface TradeReasoning {

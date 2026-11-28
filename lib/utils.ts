@@ -21,33 +21,6 @@ export const formatTimeAgo = (timestamp: number) => {
   }
 };
 
-export function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Format market cap using Indian Rupees
-export function formatMarketCapValue(marketCap: number): string {
-  if (!Number.isFinite(marketCap) || marketCap <= 0) return 'N/A';
-
-  if (marketCap >= 1e12) {
-    return `₹${(marketCap / 1e12).toFixed(2)}T`;
-  }
-
-  if (marketCap >= 1e9) {
-    return `₹${(marketCap / 1e9).toFixed(2)}B`;
-  }
-
-  if (marketCap >= 1e7) {
-    return `₹${(marketCap / 1e7).toFixed(2)}Cr`;
-  }
-
-  if (marketCap >= 1e5) {
-    return `₹${(marketCap / 1e5).toFixed(2)}L`;
-  }
-
-  return `₹${marketCap.toFixed(2)}`;
-}
-
 // Get date range using Indian Standard Time
 export const getDateRange = (days: number) => {
   const now = new Date();
@@ -82,40 +55,6 @@ export const getDateRange = (days: number) => {
   };
 };
 
-// Get today's date in YYYY-MM-DD format using IST
-export const getTodayString = () => {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata',
-  }).format(new Date());
-};
-
-// Get today's date range
-export const getTodayDateRange = () => {
-  const todayString = getTodayString();
-
-  return {
-    to: todayString,
-    from: todayString,
-  };
-};
-
-// Calculate news per symbol based on watchlist.model.ts size
-export const calculateNewsDistribution = (symbolsCount: number) => {
-  let itemsPerSymbol: number;
-  let targetNewsCount = 6;
-
-  if (symbolsCount < 3) {
-    itemsPerSymbol = 3; // Fewer symbols, more news each
-  } else if (symbolsCount === 3) {
-    itemsPerSymbol = 2; // Exactly 3 symbols, 2 news each = 6 total
-  } else {
-    itemsPerSymbol = 1; // Many symbols, 1 news each
-    targetNewsCount = 6; // Don't exceed 6 total
-  }
-
-  return { itemsPerSymbol, targetNewsCount };
-};
-
 // Check for required article fields
 export const validateArticle = (article: RawNewsArticle) =>
     article.headline &&
@@ -143,24 +82,6 @@ export const formatArticle = (
   related: isCompanyNews ? symbol! : article.related || '',
 });
 
-// Format percentage change
-export const formatChangePercent = (changePercent?: number) => {
-  if (!changePercent) return '';
-
-  const sign = changePercent > 0 ? '+' : '';
-
-  return `${sign}${changePercent.toFixed(2)}%`;
-};
-
-// Get color class based on percentage change
-export const getChangeColorClass = (changePercent?: number) => {
-  if (!changePercent) return 'text-gray-400';
-
-  return changePercent > 0
-      ? 'text-green-500'
-      : 'text-red-500';
-};
-
 // Format stock price in Indian Rupees
 export const formatPrice = (price: number): string => {
   return new Intl.NumberFormat('en-IN', {
@@ -169,18 +90,6 @@ export const formatPrice = (price: number): string => {
     minimumFractionDigits: 2,
   }).format(price);
 };
-
-// Today's formatted date in Indian Standard Time
-export const formatDateToday: string = new Date().toLocaleDateString(
-    'en-IN',
-    {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'Asia/Kolkata',
-    }
-);
 
 // Get alert text
 export const getAlertText = (alert: Alert) => {
