@@ -15,9 +15,7 @@ import {
     Sparkles,
     HelpCircle,
     CheckCircle2,
-    Clock,
-    Zap,
-    Scale
+    Clock
 } from "lucide-react";
 
 interface TradeReasoningCardProps {

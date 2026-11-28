@@ -6,7 +6,7 @@ import type {
     IAgentTrade,
 } from '@/database/models/agentPortfolio.model';
 import { getLiveQuotes, QUOTE_SOURCE_LABEL, type LiveQuote } from '@/lib/market/liveQuotes';
-import { fetchFinnhubNews, type FinnhubNewsArticle } from '@/lib/paper-trader/decisions';
+import { fetchFinnhubNews, type FinnhubNewsArticle } from '@/lib/market/finnhubNews';
 import { AGENT_UNIVERSE, AGENT_UNIVERSE_BY_SYMBOL } from './universe';
 import {
     MAX_BUY_CASH_PERCENT,
